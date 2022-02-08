@@ -949,7 +949,8 @@ public class DcatDataset implements Serializable {
 	  
 	  for (JsonNode node: theme) {
 	      ObjectMapper objectMapper = new ObjectMapper();
-	      String id = objectMapper.readValue(node.get("id"), String.class);
+	      
+	      /*String id = objectMapper.readValue(node.get("id"), String.class);
 	      String resourceUri = objectMapper.readValue(node.get("resourceUri"), String.class);
 	      String propertyUri = objectMapper.readValue(node.get("propertyUri"), String.class);
 	      
@@ -961,11 +962,12 @@ public class DcatDataset implements Serializable {
 	    	  
 	    	  SkosPrefLabel skos = new SkosPrefLabel(language, value, nodeID);
 	    	  prefLabel.add(skos);
-	      }
+	      }*/
 	      
 
-	      s.add(new SkosConceptTheme(propertyUri, resourceUri,
-	    		  prefLabel, nodeID));
+	      /*s.add(new SkosConceptTheme(propertyUri, resourceUri,
+	    		  prefLabel, nodeID));*/
+	      s.add(objectMapper.readValue(node,SkosConceptTheme.class));
 	  }
 	  setTheme2(s);
 	   
