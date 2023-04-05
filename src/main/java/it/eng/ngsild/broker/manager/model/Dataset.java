@@ -51,6 +51,5 @@ public class Dataset {
     private String version;
     private String[] versionNotes;
     private String[] wasGeneratedBy;
-      
-    
+     
 }
