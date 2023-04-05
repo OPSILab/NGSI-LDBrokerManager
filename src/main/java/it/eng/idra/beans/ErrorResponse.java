@@ -15,7 +15,6 @@
 
 package it.eng.idra.beans;
 
-import it.eng.idra.utils.GsonUtil;
 import it.eng.idra.utils.GsonUtilException;
 
 // TODO: Auto-generated Javadoc
@@ -136,19 +135,5 @@ public class ErrorResponse {
         + ", errorCode=" + errorCode + "userMessage=" + userMessage + "]\n";
   }
 
-  /**
-   * To json.
-   *
-   * @return the string
-   */
-  public String toJson() {
-    try {
-      return GsonUtil.obj2Json(this, ErrorResponse.class);
-    } catch (GsonUtilException e) {
-      e.printStackTrace();
-      return null;
-    }
-
-  }
 
 }

@@ -15,13 +15,9 @@
 
 package it.eng.idra.beans.dcat;
 
-import com.google.gson.annotations.SerializedName;
-//import it.eng.idra.cache.CacheContentType;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.sparql.vocabulary.FOAF;
-import org.apache.jena.vocabulary.DCTerms;
-import org.apache.jena.vocabulary.RDFS;
-import org.apache.jena.vocabulary.SKOS;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 //import org.apache.solr.common.SolrDocument;
 //import org.apache.solr.common.SolrInputDocument;
 
@@ -32,6 +28,9 @@ import org.apache.jena.vocabulary.SKOS;
  * @author
  */
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class FoafAgent {
 
   /** The id. */
@@ -39,7 +38,7 @@ public class FoafAgent {
 
   /** The name. */
   // Mandatory
-  private DcatProperty name;
+  private String name;
 
   // Recommended
 
@@ -50,303 +49,15 @@ public class FoafAgent {
   private String propertyUri;
 
   /** The mbox. */
-  private DcatProperty mbox;
+  private String mbox;
 
   /** The homepage. */
-  private DcatProperty homepage;
+  private String homepage;
 
   /** The type. */
-  private DcatProperty type;
+  private String type;
 
   /** The identifier. */
-  private DcatProperty identifier;
-
-  /** The node id. */
-  @SerializedName(value = "nodeID")
-  private transient String nodeId;
-
-  /**
-   * Instantiates a new foaf agent.
-   */
-  public FoafAgent() {
-  }
-
-  /** The Constant RDFClass. */
-  private static final transient Resource RDFClass = FOAF.Agent;
-
-  // public FOAFAgent(String name, String mbox, String homepage, String type,
-  // String nodeID) {
-  //
-  // setNodeID(nodeID);
-  //
-  // setName(new DCATProperty(FOAF.name, RDFS.Literal.getURI(), name));
-  // setMbox(new DCATProperty(FOAF.mbox, RDFS.Literal.getURI(), mbox));
-  // setHomepage(new DCATProperty(FOAF.homepage, RDFS.Literal.getURI(),
-  // homepage));
-  // setType(new DCATProperty(DCTerms.type, SKOS.Concept.getURI(), type));
-  //
-  // }
-
-  /**
-   * Instantiates a new foaf agent.
-   *
-   * @param propertyUri the property uri
-   * @param resourceUri the resource uri
-   * @param name        the name
-   * @param mbox        the mbox
-   * @param homepage    the homepage
-   * @param type        the type
-   * @param identifier  the identifier
-   * @param nodeId      the node ID
-   */
-  public FoafAgent(String propertyUri, String resourceUri, String name, String mbox,
-      String homepage, String type, String identifier, String nodeId) {
-
-    setNodeId(nodeId);
-    setPropertyUri(propertyUri);
-    setResourceUri(resourceUri);
-    setName(new DcatProperty(FOAF.name, RDFS.Literal, name));
-    setMbox(new DcatProperty(FOAF.mbox, RDFS.Literal, mbox));
-    setHomepage(new DcatProperty(FOAF.homepage, RDFS.Literal, homepage));
-    setType(new DcatProperty(DCTerms.type, SKOS.Concept, type));
-    setIdentifier(new DcatProperty(DCTerms.identifier, RDFS.Literal, identifier));
-
-  }
-
-  /**
-   * Gets the id.
-   *
-   * @return the id
-   */
-  /*
-   * @Id
-   * 
-   * @Column(name = "publisher_id")
-   * 
-   * @GeneratedValue(generator="increment")
-   * 
-   * @GenericGenerator(name="increment", strategy = "increment")
-   */
-
-  public String getId() {
-    return id;
-  }
-
-  /**
-   * Sets the id.
-   *
-   * @param id the new id
-   */
-  public void setId(String id) {
-    this.id = id;
-  }
-
-  /**
-   * Gets the node id.
-   *
-   * @return the node id
-   */
-  public String getNodeId() {
-    return nodeId;
-  }
-
-  /**
-   * Sets the node id.
-   *
-   * @param nodeId the new node id
-   */
-  public void setNodeId(String nodeId) {
-    this.nodeId = nodeId;
-  }
-
-  /**
-   * Gets the rdf class.
-   *
-   * @return the rdf class
-   */
-  public static Resource getRdfClass() {
-    return RDFClass;
-  }
-
-  /**
-   * Gets the property uri.
-   *
-   * @return the property uri
-   */
-  public String getPropertyUri() {
-    return propertyUri;
-  }
-
-  /**
-   * Sets the property uri.
-   *
-   * @param propertyUri the new property uri
-   */
-  public void setPropertyUri(String propertyUri) {
-    this.propertyUri = propertyUri;
-  }
-
-  /**
-   * Gets the resource uri.
-   *
-   * @return the resource uri
-   */
-  public String getResourceUri() {
-    return resourceUri;
-  }
-
-  /**
-   * Sets the resource uri.
-   *
-   * @param resourceUri the new resource uri
-   */
-  public void setResourceUri(String resourceUri) {
-    // this.resourceUri = StringUtils.isBlank(resourceUri) ? "" :
-    // resourceUri;
-    this.resourceUri = resourceUri;
-  }
-
-  /**
-   * Gets the name.
-   *
-   * @return the name
-   */
-  public DcatProperty getName() {
-    return name;
-  }
-
-  /**
-   * Sets the name.
-   *
-   * @param name the new name
-   */
-  public void setName(DcatProperty name) {
-    if (name != null) {
-      this.name = name;
-    }
-  }
-
-  /**
-   * Gets the mbox.
-   *
-   * @return the mbox
-   */
-  public DcatProperty getMbox() {
-    return mbox;
-  }
-
-  /**
-   * Sets the mbox.
-   *
-   * @param mbox the new mbox
-   */
-  public void setMbox(DcatProperty mbox) {
-    this.mbox = mbox;
-  }
-
-  /**
-   * Gets the homepage.
-   *
-   * @return the homepage
-   */
-  public DcatProperty getHomepage() {
-    return homepage;
-  }
-
-  /**
-   * Sets the homepage.
-   *
-   * @param homepage the new homepage
-   */
-  public void setHomepage(DcatProperty homepage) {
-    this.homepage = homepage;
-  }
-
-  /**
-   * Gets the type.
-   *
-   * @return the type
-   */
-  public DcatProperty getType() {
-    return type;
-  }
-
-  /**
-   * Sets the type.
-   *
-   * @param type the new type
-   */
-  public void setType(DcatProperty type) {
-    this.type = type;
-  }
-
-  /**
-   * Gets the identifier.
-   *
-   * @return the identifier
-   */
-  public DcatProperty getIdentifier() {
-    return identifier;
-  }
-
-  /**
-   * Sets the identifier.
-   *
-   * @param identifier the new identifier
-   */
-  public void setIdentifier(DcatProperty identifier) {
-    this.identifier = identifier;
-  }
-
-  /**
-   * To doc.
-   *
-   * @param contentType the content type
-   * @return the solr input document
-   */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("resourceUri", this.resourceUri);
-//    doc.addField("identifier", this.getIdentifier().getValue());
-//    doc.addField("name", this.getName().getValue());
-//    doc.addField("mbox", this.getMbox().getValue());
-//    doc.addField("homepage", this.getHomepage().getValue());
-//    doc.addField("type", this.getType().getValue());
-//
-//    return doc;
-//  }
-
-  /**
-   * Doc to foaf agent.
-   *
-   * @param doc         the doc
-   * @param propertyUri the property uri
-   * @param nodeId      the node id
-   * @return the foaf agent
-   */
-//  public static FoafAgent docToFoafAgent(SolrDocument doc, String propertyUri, String nodeId) {
-//    FoafAgent f = new FoafAgent(propertyUri, (String) doc.getFieldValue("resourceUri"),
-//        doc.getFieldValue("name").toString(), doc.getFieldValue("mbox").toString(),
-//        doc.getFieldValue("homepage").toString(), doc.getFieldValue("type").toString(),
-//        doc.getFieldValue("identifier").toString(), nodeId);
-//    f.setId(doc.getFieldValue("id").toString());
-//    return f;
-//  }
-
-  /*
-   * (non-Javadoc)
-   * 
-   * @see java.lang.Object#toString()
-   */
-  @Override
-  public String toString() {
-    return "FOAFAgent [id=" + id + ", name=" + name + ", propertyUri=" + propertyUri + ", mbox="
-        + mbox + ", homepage=" + homepage + ", type=" + type + ", identifier=" + identifier
-        + ", nodeID=" + nodeId + "]";
-  }
+  private String identifier;
 
 }
