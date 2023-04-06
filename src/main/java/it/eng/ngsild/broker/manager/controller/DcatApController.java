@@ -2,6 +2,17 @@ package it.eng.ngsild.broker.manager.controller;
 
 
 
+import org.apache.http.entity.ContentType;
+import org.apache.jena.atlas.json.JSON;
+
+
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+
+//import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 //import org.springframework.web.bind.annotation.DeleteMapping;
 //import org.springframework.web.bind.annotation.GetMapping;
@@ -10,8 +21,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 //import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
 //import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -46,14 +65,44 @@ import it.eng.ngsild.broker.manager.model.Dataset;
 @RequestMapping("/api")
 public class DcatApController {
 	
+	@Autowired
+	RestTemplate restTemplate;
+	
 	
     //API POST
-    @PostMapping("/dataset")
-    public ResponseEntity<Dataset> createDcatAp(@RequestBody Dataset dataset) {
+	@RequestMapping(value = "/dataset", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<String> createDcatAp(@RequestBody String dataset) {
+    	Dataset datasetNgsi = new Dataset();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+		try {
+			node = map.readTree(dataset);
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}  
+    	String entityString = datasetNgsi.convertToNgsi(node);
+    	String contexBrokerEndpoint = "http://localhost:1026/ngsi-ld/v1/entities";
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+			return response;
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return null;
+		}
    	//Dataset convertedDcatAp = converter.convertDatasetDcatAp(dataset);
     // orionClient.sendDatasetDcatApToOrion(convertedDcatAp);
-    return ResponseEntity.ok(dataset);
+    // return ResponseEntity.ok(dataset);
     }
+    
     //@PostMapping("/agentdcatap")
      //public ResponseEntity<AgentDcatAp> createDcatAp(@RequestBody AgentDcatAp agentDcatAp) {
     	//AgentDcatAp convertedDcatAp = converter.convertAgentDcatAp(agentDcatAp);
