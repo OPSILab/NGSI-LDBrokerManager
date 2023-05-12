@@ -39,7 +39,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
-
+import it.eng.ngsild.broker.manager.model.AgentDcatAp;
 
 //import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -99,6 +99,40 @@ public class DcatApController {
 			headers.setContentType(MediaType.APPLICATION_JSON);
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+    }
+	@RequestMapping(value = "/agentdcatap", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<?> createAgent(@RequestBody String agent) {
+    	AgentDcatAp agentNgsi = new AgentDcatAp();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		try {
+			node = map.readTree(agent);
+			String entityString = agentNgsi.convertToNgsi(node);
+			System.out.println(entityString);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
