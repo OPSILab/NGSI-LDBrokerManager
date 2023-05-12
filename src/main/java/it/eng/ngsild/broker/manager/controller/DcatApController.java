@@ -2,18 +2,25 @@ package it.eng.ngsild.broker.manager.controller;
 
 
 
+import java.util.ArrayList;
+
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.http.entity.ContentType;
 import org.apache.jena.atlas.json.JSON;
 
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-
+import org.springframework.http.HttpStatus;
 //import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 //import org.springframework.web.bind.annotation.DeleteMapping;
 //import org.springframework.web.bind.annotation.GetMapping;
 //import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +38,8 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+
+
 
 //import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -64,6 +73,11 @@ import it.eng.ngsild.broker.manager.model.Dataset;
 @RestController
 @RequestMapping("/api")
 public class DcatApController {
+	@Value("${contexBroker.host_orion}")
+	private String hostContextBroker;
+	
+	@Value("${contexBroker.port_orion}")
+	private String portContextBroker;
 	
 	@Autowired
 	RestTemplate restTemplate;
@@ -71,36 +85,37 @@ public class DcatApController {
 	
     //API POST
 	@RequestMapping(value = "/dataset", method = RequestMethod.POST, consumes="application/json")
-    public ResponseEntity<String> createDcatAp(@RequestBody String dataset) {
+    public ResponseEntity<?> createDcatAp(@RequestBody String dataset) {
+		System.out.println(dataset);
     	Dataset datasetNgsi = new Dataset();
     	ObjectMapper map = new ObjectMapper();  
     	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		try {
 			node = map.readTree(dataset);
-		} catch (JsonMappingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}  
-    	String entityString = datasetNgsi.convertToNgsi(node);
-    	String contexBrokerEndpoint = "http://localhost:1026/ngsi-ld/v1/entities";
-		try {
+			String entityString = datasetNgsi.convertToNgsi(node);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
-			return response;
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
 			System.out.println(e.getMessage());
 			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 			return null;
 		}
-   	//Dataset convertedDcatAp = converter.convertDatasetDcatAp(dataset);
-    // orionClient.sendDatasetDcatApToOrion(convertedDcatAp);
-    // return ResponseEntity.ok(dataset);
     }
     
     //@PostMapping("/agentdcatap")
@@ -134,79 +149,31 @@ public class DcatApController {
      // return ResponseEntity.ok(distributionDcatAp);
      // }
     
-    
+@GetMapping("/dataset")
+public List<Object> getAllEscalator() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			System.out.println("hostContextBroker: " + hostContextBroker);
+			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=Dataset&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
+		System.out.println(dataset);
+		return dataset;
+    }
 
-    //API DELETE
-    // @DeleteMapping("/dataset/{id}")
-    //public ResponseEntity<Void> deleteDcatAp(@PathVariable String id) {
-        //orionClient.deleteDatasetFromOrion(id);
-    //   return ResponseEntity.noContent().build();
-    //  }
-    // @DeleteMapping("/agentdcatap/{id}")
-    //  public ResponseEntity<Void> deleteAgentDcatAp(@PathVariable String id) {
-    	//orionClient.deleteAgentDcatApFromOrion(id);
-    // return ResponseEntity.noContent().build();
-    //   }
-    // @DeleteMapping("/cataloguedcatap/{id}")
-    // public ResponseEntity<Void> deleteCatalogueDcatAp(@PathVariable String id) {
-    	//orionClient.deleteCatalogueDcatApFromOrion(id);
-    //   return ResponseEntity.noContent().build();
-    // }
-    // @DeleteMapping("/cataloguerecorddcatap/{id}")
-    // public ResponseEntity<Void> deleteCatalogueRecordDcatAp(@PathVariable String id) {
-    	//orionClient.deleteCatalogueRecordDcatApFromOrion(id);
-    //   return ResponseEntity.noContent().build();
-    // }
-    // @DeleteMapping("/dataservicedcatap/{id}")
-    // public ResponseEntity<Void> deleteDataServiceDcatAp(@PathVariable String id) {
-    	// orionClient.deleteDataServiceDcatApFromOrion(id);
-    //    return ResponseEntity.noContent().build();
-    //  }
-    // @DeleteMapping("/distributiondcatap/{id}")
-    // public ResponseEntity<Void> deleteDistributionDcatAp(@PathVariable String id) {
-    	// orionClient.deleteDistributionDcatApFromOrion(id);
-    //      return ResponseEntity.noContent().build();
-    // }
+
     
 
     
     
     
-    // //API PUT
-    //@PutMapping("/dataset/{id}")
-    // public ResponseEntity<Dataset> updateDcatAp(@PathVariable String id, @RequestBody Dataset dataset) {
-    	// Dataset convertedDcatAp = converter.convertDataset(dataset);
-        //orionClient.updateDatasetInOrion(id, convertedDcatAp);
-    //   return ResponseEntity.ok(dataset);
-    //}
-    // @PutMapping("/agentdcatap/{id}")
-    // public ResponseEntity<AgentDcatAp> updateDcatAp(@PathVariable String id, @RequestBody AgentDcatAp agentDcatAp) {
-    	//AgentDcatAp convertedDcatAp = converter.convertAgentDcatAp(agentDcatAp);
-    	//orionClient.updateAgentDcatApInOrion(id, convertedDcatAp);
-    //   return ResponseEntity.ok(agentDcatAp);
-        // }
-// @PutMapping("/cataloguedcatap/{id}")
-    // public ResponseEntity<CatalogueDcatAp> updateDcatAp(@PathVariable String id, @RequestBody CatalogueDcatAp catalogueDcatAp) {
-    	//CatalogueDcatAp convertedDcatAp = converter.convertCatalogueDcatAp(catalogueDcatAp);
-    	//orionClient.updateCatalogueDcatApInOrion(id, convertedDcatAp);
-    	//   return ResponseEntity.ok(catalogueDcatAp);
-        // }
-    //@PutMapping("/cataloguerecorddcatap/{id}")
-    //  public ResponseEntity<CatalogueRecordDcatAp> updateDcatAp(@PathVariable String id, @RequestBody CatalogueRecordDcatAp catalogueRecordDcatAp) {
-    	//CatalogueRecordDcatAp convertedDcatAp = converter.convertCatalogueRecordDcatAp(catalogueRecordDcatAp);
-    	//orionClient.updateCatalogueRecordDcatApInOrion(id, convertedDcatAp);
-    //   return ResponseEntity.ok(catalogueRecordDcatAp);
-        //}
-        // @PutMapping("/dataservicedcatap/{id}")
-    // public ResponseEntity<DataServiceDcatAp> updateDcatAp(@PathVariable String id, @RequestBody DataServiceDcatAp dataServiceDcatAp) {
-    	//DataServiceDcatAp convertedDcatAp = converter.convertDataServiceDcatAp(dataServiceDcatAp);
-    	//orionClient.updateDataServiceDcatApInOrion(id, convertedDcatAp);
-    //   return ResponseEntity.ok(dataServiceDcatAp);
-        //}
-    // @PutMapping("/distributiondcatap/{id}")
-    //public ResponseEntity<DistributionDcatAp> updateDcatAp(@PathVariable String id, @RequestBody DistributionDcatAp distributionDcatAp) {
-    	//DistributionDcatAp convertedDcatAp = converter.convertDistributionDcatAp(distributionDcatAp);
-    	//orionClient.updateDistributionDcatApInOrion(id, convertedDcatAp);
-    //  return ResponseEntity.ok(distributionDcatAp);
-    // }
+   
 }
