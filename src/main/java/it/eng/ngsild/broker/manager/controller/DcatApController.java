@@ -40,6 +40,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
 import it.eng.ngsild.broker.manager.model.AgentDcatAp;
+import it.eng.ngsild.broker.manager.model.CatalogueDcatAp;
+import it.eng.ngsild.broker.manager.model.CatalogueRecordDcatAp;
+import it.eng.ngsild.broker.manager.model.DataServiceDcatAp;
 
 //import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
@@ -48,6 +51,7 @@ import it.eng.ngsild.broker.manager.model.AgentDcatAp;
 //import it.eng.ngsild.broker.manager.model.CatalogueRecordDcatAp;
 //import it.eng.ngsild.broker.manager.model.DataServiceDcatAp;
 import it.eng.ngsild.broker.manager.model.Dataset;
+import it.eng.ngsild.broker.manager.model.DistributionDcatAp;
 //import it.eng.ngsild.broker.manager.model.DistributionDcatAp;
 
 
@@ -151,7 +155,144 @@ public class DcatApController {
 			return null;
 		}
     }
+	@RequestMapping(value = "/cataloguedcatap", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<?> createCataloguedcatap(@RequestBody String agent) {
+    	CatalogueDcatAp catalogueNgsi = new CatalogueDcatAp();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		try {
+			node = map.readTree(agent);
+			String entityString = catalogueNgsi.convertToNgsi(node);
+			System.out.println(entityString);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+    }
+	@RequestMapping(value = "/cataloguerecorddcatap", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<?> createCatalogueRecordDcatap(@RequestBody String agent) {
+		CatalogueRecordDcatAp catalogueNgsi = new CatalogueRecordDcatAp();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		try {
+			node = map.readTree(agent);
+			String entityString = catalogueNgsi.convertToNgsi(node);
+			System.out.println(entityString);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+    }
+	
+	@RequestMapping(value = "/dataservicedcatap", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<?> createDataServiceDcatAp(@RequestBody String agent) {
+		DataServiceDcatAp dataserviceNgsi = new DataServiceDcatAp();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		try {
+			node = map.readTree(agent);
+			String entityString = dataserviceNgsi.convertToNgsi(node);
+			System.out.println(entityString);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+    }
     
+	@RequestMapping(value = "/distributiondcatap", method = RequestMethod.POST, consumes="application/json")
+    public ResponseEntity<?> createDistributionDcatap(@RequestBody String agent) {
+		DistributionDcatAp distributionNgsi = new DistributionDcatAp();
+    	ObjectMapper map = new ObjectMapper();  
+    	JsonNode node = null;
+    	
+    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		try {
+			node = map.readTree(agent);
+			String entityString = distributionNgsi.convertToNgsi(node);
+			System.out.println(entityString);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+		
+			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
+			
+			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
+		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
+		} catch (HttpClientErrorException e) {
+			System.out.println(e.getMessage());
+			// handle exception here
+			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+		
+		} catch (JsonMappingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		} catch (JsonProcessingException e) {
+			
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+    }
     //@PostMapping("/agentdcatap")
      //public ResponseEntity<AgentDcatAp> createDcatAp(@RequestBody AgentDcatAp agentDcatAp) {
     	//AgentDcatAp convertedDcatAp = converter.convertAgentDcatAp(agentDcatAp);
@@ -184,7 +325,7 @@ public class DcatApController {
      // }
     
 @GetMapping("/dataset")
-public List<Object> getAllEscalator() {
+public List<Object> getAllDataset() {
 	  int limit = 20;
 		int offset = 0;
 		List<Object> dataset= new ArrayList();
@@ -200,6 +341,94 @@ public List<Object> getAllEscalator() {
 			offset = offset + limit; 
 		} while (!Arrays.asList(response.getBody()).isEmpty());
 		System.out.println(dataset);
+		return dataset;
+    }
+@GetMapping("/cataloguedcatap")
+public List<Object> getAllCataloguedcatap() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			System.out.println("hostContextBroker: " + hostContextBroker);
+			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=CatalogueDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
+		System.out.println(dataset);
+		return dataset;
+    }
+@GetMapping("/cataloguerecorddcatap")
+public List<Object> getAllCatalogueRecordDcatap() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			System.out.println("hostContextBroker: " + hostContextBroker);
+			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=CatalogueRecordDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
+		System.out.println(dataset);
+		return dataset;
+    }
+
+@GetMapping("/agentdcatap")
+public List<Object> getAllAgentdcatap() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=AgentDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
+		return dataset;
+    }
+@GetMapping("/dataservicedcatap")
+public List<Object> getAllDataservicedcatap() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=DataServiceDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
+		return dataset;
+    }
+
+@GetMapping("/distributiondcatap")
+public List<Object> getAllDistributiondcatap() {
+	  int limit = 20;
+		int offset = 0;
+		List<Object> dataset= new ArrayList();
+	
+		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		ResponseEntity<Object[]> response;
+		do {
+			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=DistributionDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
+			List<Object> responseArr = Arrays.asList(response.getBody());
+			dataset.addAll(responseArr);
+			offset = offset + limit; 
+		} while (!Arrays.asList(response.getBody()).isEmpty());
 		return dataset;
     }
 
