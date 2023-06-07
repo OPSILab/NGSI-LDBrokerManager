@@ -134,7 +134,7 @@ public class CatalogueDcatAp {
 				title = new String[(catalogueDcatAp.get("title").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("title")) {
-					title[i] = c.toString();
+					title[i] = c.textValue();
 					System.out.println(title[i]);
 					i++;
 				}
@@ -146,7 +146,7 @@ public class CatalogueDcatAp {
 				dataset = new String[(catalogueDcatAp.get("dataset").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("dataset")) {
-					dataset[i] = c.toString();
+					dataset[i] = c.textValue();
 					i++;
 				}
 
@@ -195,7 +195,9 @@ public class CatalogueDcatAp {
 				catalogue = new String[(catalogueDcatAp.get("catalogue").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("catalogue")) {
-					catalogue[i] = c.toString();
+					System.out.println(c);
+					System.out.println(c.textValue());
+					catalogue[i] = c.textValue().trim();
 					i++;
 				}
 
@@ -216,7 +218,7 @@ public class CatalogueDcatAp {
 				hasPart = new String[(catalogueDcatAp.get("hasPart").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("hasPart")) {
-					hasPart[i] = c.toString();
+					hasPart[i] = c.textValue();
 					i++;
 				}
 
@@ -229,7 +231,7 @@ public class CatalogueDcatAp {
 				language = new String[(catalogueDcatAp.get("language").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("language")) {
-					language[i] = c.toString();
+					language[i] = c.textValue();
 					i++;
 				}
 
@@ -257,7 +259,7 @@ public class CatalogueDcatAp {
 				owner = new String[(catalogueDcatAp.get("owner").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("owner")) {
-					owner[i] = c.toString();
+					owner[i] = c.textValue();
 					i++;
 				}
 
@@ -270,7 +272,7 @@ public class CatalogueDcatAp {
 				record = new String[(catalogueDcatAp.get("record").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("record")) {
-					record[i] = c.toString();
+					record[i] = c.textValue();
 					i++;
 				}
 
@@ -285,7 +287,7 @@ public class CatalogueDcatAp {
 				seeAlso = new String[(catalogueDcatAp.get("seeAlso").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("seeAlso")) {
-					seeAlso[i] = c.toString();
+					seeAlso[i] = c.textValue();
 					i++;
 				}
 
@@ -296,7 +298,7 @@ public class CatalogueDcatAp {
 				service = new String[(catalogueDcatAp.get("service").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("service")) {
-					service[i] = c.toString();
+					service[i] = c.textValue();
 					i++;
 				}
 
@@ -325,7 +327,7 @@ public class CatalogueDcatAp {
 				themes = new String[(catalogueDcatAp.get("themes").size())];
 				int i = 0;
 				for (JsonNode c : catalogueDcatAp.get("themes")) {
-					themes[i] = c.toString();
+					themes[i] = c.textValue();
 					i++;
 				}
 

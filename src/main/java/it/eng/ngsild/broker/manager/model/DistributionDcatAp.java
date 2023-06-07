@@ -45,7 +45,7 @@ public class DistributionDcatAp {
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String[] documentation;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
-	   public String[] downloadURL;
+	   public String downloadURL;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String format;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -61,7 +61,7 @@ public class DistributionDcatAp {
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String mediaType;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
-	   public String modifiedDate;
+	   public DateTime modifiedDate;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String name; 
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -69,7 +69,7 @@ public class DistributionDcatAp {
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String packagingFormat;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
-	   public String releaseDate;
+	   public DateTime releaseDate;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String rights;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -83,15 +83,15 @@ public class DistributionDcatAp {
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public Integer[] temporalResolution ;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
-	   public String[] title;
+	   public String title;
 	public DistributionDcatAp(String id, String type, String[] accessService, AddressVerified address,
 			String[] accessUrl, String alternateName, String areaServed, String availability, String byteSize,
 			String checksum, String compressionFormat, String dataProvider, String dateCreated, String dateModified,
-			String description, String[] documentation, String[] downloadURL, String format, String hasPolicy,
+			String description, String[] documentation, String downloadURL, String format, String hasPolicy,
 			String[] language, String license, String[] linkedSchemas, Point location, String mediaType,
-			String modifiedDate, String name, String[] owner, String packagingFormat, String releaseDate, String rights,
+			DateTime modifiedDate, String name, String[] owner, String packagingFormat, DateTime releaseDate, String rights,
 			String seeAlso, String source, Double[] spatialResolution, Status status, Integer[] temporalResolution,
-			String[] title) {
+			String title) {
 		super();
 		this.id = id;
 		this.type = type;
@@ -238,15 +238,17 @@ public class DistributionDcatAp {
 			}
 			
 			
-			String[] downloadURL = null;
-			if (distributionDcatAp.get("downloadURL") != null && distributionDcatAp.get("downloadURL").isArray()) {
+			String downloadURL = distributionDcatAp.get("downloadURL") != null
+					? distributionDcatAp.get("downloadURL").textValue()
+					: null;
+			/*if (distributionDcatAp.get("downloadURL") != null && distributionDcatAp.get("downloadURL").isArray()) {
 				downloadURL = new String[(distributionDcatAp.get("downloadURL").size())];
 				int i = 0;
 				for (JsonNode c : distributionDcatAp.get("downloadURL")) {
 					downloadURL[i] = c.toString();
 					i++;
 				}
-			}
+			}*/
 			String format = distributionDcatAp.get("format") != null
 					? distributionDcatAp.get("format").textValue()
 					: null;
@@ -294,8 +296,8 @@ public class DistributionDcatAp {
 			String mediaType = distributionDcatAp.get("mediaType") != null
 					? distributionDcatAp.get("mediaType").textValue()
 					: null;
-			String modifiedDate = distributionDcatAp.get("modifiedDate") != null
-					? distributionDcatAp.get("modifiedDate").textValue()
+			DateTime modifiedDate = distributionDcatAp.get("modifiedDate") != null
+					? new DateTime(distributionDcatAp.get("modifiedDate").textValue())
 					: null;
 			String name = distributionDcatAp.get("name") != null
 					? distributionDcatAp.get("name").textValue()
@@ -313,8 +315,8 @@ public class DistributionDcatAp {
 			String packagingFormat = distributionDcatAp.get("packagingFormat") != null
 					? distributionDcatAp.get("packagingFormat").textValue()
 					: null;
-			String releaseDate = distributionDcatAp.get("releaseDate") != null
-					? distributionDcatAp.get("releaseDate").textValue()
+			DateTime releaseDate = distributionDcatAp.get("releaseDate") != null
+					? new DateTime(distributionDcatAp.get("releaseDate").textValue())
 					: null;
 			String rights = distributionDcatAp.get("rights") != null
 					? distributionDcatAp.get("rights").textValue()
@@ -351,15 +353,16 @@ public class DistributionDcatAp {
 				}
 			}
 			
-			String[] title = null;
-			if (distributionDcatAp.get("title") != null && distributionDcatAp.get("title").isArray()) {
+			String title = distributionDcatAp.get("title") != null ? distributionDcatAp.get("title").textValue(): null;
+			System.out.println(title);
+			/*if (distributionDcatAp.get("title") != null && distributionDcatAp.get("title").isArray()) {
 				title = new String[(distributionDcatAp.get("title").size())];
 				int i = 0;
 				for (JsonNode c : distributionDcatAp.get("title")) {
 					title[i] = c.toString();
 					i++;
 				}
-			}
+			}*/
 			DistributionDcatAp distrngsi = new DistributionDcatAp (id,type,accessService,addressVer,
 			accessUrl,alternateName,areaServed,availability,byteSize,
 			  checksum,compressionFormat,dataProvider,dateCreated,dateModified,

@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -45,9 +46,9 @@ public class Dataset {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String datasetType;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String dateCreated;
+	public DateTime dateCreated;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String dateModified;
+	public DateTime dateModified;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String description;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -57,7 +58,7 @@ public class Dataset {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] hasVersion;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String[] identifier;
+	public String identifier;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] isReferencedBy;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -65,7 +66,7 @@ public class Dataset {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] keyword;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String[] landingPage;
+	public String landingPage;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] language;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -85,7 +86,7 @@ public class Dataset {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] relatedResource;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String releaseDate;
+	public DateTime releaseDate;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] sample;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -98,9 +99,9 @@ public class Dataset {
 	public String[] temporalResolution;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] theme;
-	public String[] title;
+	public String title;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public String updateDate;
+	public DateTime updateDate;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String version;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -114,13 +115,13 @@ public class Dataset {
 
 	public Dataset(String id, String type, AccessRight accessRights, String alternateName, String[] contactPoint,
 			String creator, String dataProvider, String[] datasetDescription, String[] datasetDistribution,
-			String[] datasetSource, String datasetType, String dateCreated, String dateModified, String description,
-			String[] documentation, String frequency, String[] hasVersion, String[] identifier, String[] isReferencedBy,
-			String[] isVersionOf, String[] keyword, String[] landingPage, String[] language, String name,
+			String[] datasetSource, String datasetType, DateTime dateCreated, DateTime dateModified, String description,
+			String[] documentation, String frequency, String[] hasVersion, String identifier, String[] isReferencedBy,
+			String[] isVersionOf, String[] keyword, String landingPage, String[] language, String name,
 			String[] otherIdentifier, String[] owner, String[] provenance, String publisher,
-			String[] qualifiedAttribution, String[] qualifiedRelation, String[] relatedResource, String releaseDate,
+			String[] qualifiedAttribution, String[] qualifiedRelation, String[] relatedResource, DateTime releaseDate,
 			String[] sample, String seeAlso, String source, Point[] spatial, String[] temporalResolution,
-			String[] theme, String[] title, String updateDate, String version, String[] versionNotes,
+			String[] theme, String title, DateTime updateDate, String version, String[] versionNotes,
 			String[] wasGeneratedBy) {
 		super();
 		this.id = id;
@@ -177,17 +178,17 @@ public class Dataset {
 				+ Arrays.toString(datasetSource) + ", datasetType=" + datasetType + ", dateCreated=" + dateCreated
 				+ ", dateModified=" + dateModified + ", description=" + description + ", documentation="
 				+ Arrays.toString(documentation) + ", frequency=" + frequency + ", hasVersion="
-				+ Arrays.toString(hasVersion) + ", identifier=" + Arrays.toString(identifier) + ", isReferencedBy="
+				+ Arrays.toString(hasVersion) + ", identifier=" + identifier + ", isReferencedBy="
 				+ Arrays.toString(isReferencedBy) + ", isVersionOf=" + Arrays.toString(isVersionOf) + ", keyword="
-				+ Arrays.toString(keyword) + ", landingPage=" + Arrays.toString(landingPage) + ", language="
+				+ Arrays.toString(keyword) + ", landingPage=" + landingPage + ", language="
 				+ Arrays.toString(language) + ", name=" + name + ", otherIdentifier=" + Arrays.toString(otherIdentifier)
 				+ ", owner=" + Arrays.toString(owner) + ", provenance=" + Arrays.toString(provenance) + ", publisher="
 				+ publisher + ", qualifiedAttribution=" + Arrays.toString(qualifiedAttribution) + ", qualifiedRelation="
 				+ Arrays.toString(qualifiedRelation) + ", relatedResource=" + Arrays.toString(relatedResource)
-				+ ", releaseDate=" + releaseDate + ", sample=" + Arrays.toString(sample) + ", seeAlso=" + seeAlso
+				+ ", releaseDate=" + releaseDate.toString() + ", sample=" + Arrays.toString(sample) + ", seeAlso=" + seeAlso
 				+ ", source=" + source + ", spatial=" + Arrays.toString(spatial) + ", temporalResolution="
 				+ Arrays.toString(temporalResolution) + ", theme=" + Arrays.toString(theme) + ", title="
-				+ Arrays.toString(title) + ", updateDate=" + updateDate + ", version=" + version + ", versionNotes="
+				+ title + ", updateDate=" + updateDate + ", version=" + version + ", versionNotes="
 				+ Arrays.toString(versionNotes) + ", wasGeneratedBy=" + Arrays.toString(wasGeneratedBy) + "]";
 	}
 
@@ -222,7 +223,7 @@ public class Dataset {
 			}
 
 			System.out.println(accessRights);
-			String alternateName = dataset.get("alternateName") != null ? dataset.get("alternateName").toString()
+			String alternateName = dataset.get("alternateName") != null ? dataset.get("alternateName").textValue()
 					: null;
 			String[] contactPoint = null;
 			if (dataset.get("contactPoint") != null && dataset.get("contactPoint").isArray()) {
@@ -230,14 +231,14 @@ public class Dataset {
 				contactPoint = new String[(dataset.get("contactPoint").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("contactPoint")) {
-					contactPoint[i] = c.toString();
+					contactPoint[i] = c.textValue();
 					System.out.println(contactPoint[i]);
 					i++;
 				}
 
 			}
-			String creator = dataset.get("creator") != null ? dataset.get("creator").toString() : null;
-			String dataProvider = dataset.get("dataProvider") != null ? dataset.get("dataProvider").toString() : null;
+			String creator = dataset.get("creator") != null ? dataset.get("creator").textValue() : null;
+			String dataProvider = dataset.get("dataProvider") != null ? dataset.get("dataProvider").textValue() : null;
 			String[] datasetDescription = null;
 			if (dataset.get("datasetDescription") != null && dataset.get("datasetDescription").isArray()) {
 				System.out.println("datasetDescription");
@@ -245,7 +246,7 @@ public class Dataset {
 				datasetDescription = new String[(dataset.get("datasetDescription").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("datasetDescription")) {
-					datasetDescription[i] = c.toString();
+					datasetDescription[i] = c.textValue();
 					i++;
 				}
 
@@ -258,7 +259,7 @@ public class Dataset {
 				System.out.println("ciao");
 				int i = 0;
 				for (JsonNode c : dataset.get("datasetDistribution")) {
-					datasetDistribution[i] = c.toString();
+					datasetDistribution[i] = c.textValue();
 					i++;
 				}
 			}
@@ -269,53 +270,53 @@ public class Dataset {
 				datasetSource = new String[(dataset.get("datasetSource").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("datasetSource")) {
-					datasetSource[i] = c.toString();
+					datasetSource[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String datasetType = dataset.get("datasetType") != null ? dataset.get("datasetType").toString() : null;
-			String dateCreated = dataset.get("dateCreated") != null ? dataset.get("dateCreated").toString() : null;
-			String dateModified = dataset.get("dateModified") != null ? dataset.get("dateModified").toString() : null;
-			String description = dataset.get("description") != null ? dataset.get("description").toString() : null;
+			String datasetType = dataset.get("datasetType") != null ? dataset.get("datasetType").textValue() : null;
+			DateTime dateCreated = dataset.get("dateCreated") != null ? new DateTime(dataset.get("dateCreated").textValue()) : null;
+			DateTime dateModified = dataset.get("dateModified") != null ? new DateTime(dataset.get("dateModified").textValue()) : null;
+			String description = dataset.get("description") != null ? dataset.get("description").textValue() : null;
 			System.out.println("194");
 			String[] documentation = null;
 			if (dataset.get("documentation") != null && dataset.get("documentation").isArray()) {
 				documentation = new String[(dataset.get("documentation").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("documentation")) {
-					documentation[i] = c.toString();
+					documentation[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String frequency = dataset.get("frequency") != null ? dataset.get("frequency").toString() : null;
+			String frequency = dataset.get("frequency") != null ? dataset.get("frequency").textValue() : null;
 			String[] hasVersion = null;
 			if (dataset.get("hasVersion") != null && dataset.get("hasVersion").isArray()) {
 				hasVersion = new String[(dataset.get("hasVersion").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("hasVersion")) {
-					hasVersion[i] = c.toString();
+					hasVersion[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String[] identifier = null;
-			if (dataset.get("identifier") != null && dataset.get("identifier").isArray()) {
+			String identifier = dataset.get("identifier") != null ? dataset.get("identifier").textValue() : null;
+			/*if (dataset.get("identifier") != null && dataset.get("identifier").isArray()) {
 				identifier = new String[(dataset.get("identifier").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("identifier")) {
-					identifier[i] = c.toString();
+					identifier[i] = c.textValue();
 					i++;
 				}
 
-			}
+			}*/
 			String[] isReferencedBy = null;
 			if (dataset.get("isReferencedBy") != null && dataset.get("isReferencedBy").isArray()) {
 				isReferencedBy = new String[(dataset.get("isReferencedBy").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("isReferencedBy")) {
-					isReferencedBy[i] = c.toString();
+					isReferencedBy[i] = c.textValue();
 					i++;
 				}
 
@@ -325,7 +326,7 @@ public class Dataset {
 				isVersionOf = new String[(dataset.get("isVersionOf").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("isVersionOf")) {
-					isVersionOf[i] = c.toString();
+					isVersionOf[i] = c.textValue();
 					i++;
 				}
 
@@ -335,40 +336,41 @@ public class Dataset {
 				keyword = new String[(dataset.get("keyword").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("keyword")) {
-					keyword[i] = c.toString();
+					keyword[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String[] landingPage = null;
-			if (dataset.get("landingPage") != null && dataset.get("landingPage").isArray()) {
+			String landingPage = dataset.get("landingPage") != null ? dataset.get("landingPage").textValue()
+					: null;
+			/*if (dataset.get("landingPage") != null && dataset.get("landingPage").isArray()) {
 				landingPage = new String[(dataset.get("landingPage").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("landingPage")) {
-					landingPage[i] = c.toString();
+					landingPage[i] = c.textValue();
 					i++;
 				}
 
-			}
+			}*/
 			String[] language = null;
 			if (dataset.get("language") != null && dataset.get("language").isArray()) {
 				language = new String[(dataset.get("language").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("language")) {
-					language[i] = c.toString();
+					language[i] = c.textValue();
 					i++;
 				}
 
 			}
 
-			String name = dataset.get("name") != null ? dataset.get("name").toString() : null;
+			String name = dataset.get("name") != null ? dataset.get("name").textValue() : null;
 
 			String[] otherIdentifier = null;
 			if (dataset.get("otherIdentifier") != null && dataset.get("otherIdentifier").isArray()) {
 				otherIdentifier = new String[(dataset.get("otherIdentifier").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("otherIdentifier")) {
-					otherIdentifier[i] = c.toString();
+					otherIdentifier[i] = c.textValue();
 					i++;
 				}
 
@@ -378,7 +380,7 @@ public class Dataset {
 				owner = new String[(dataset.get("owner").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("owner")) {
-					owner[i] = c.toString();
+					owner[i] = c.textValue();
 					i++;
 				}
 
@@ -389,19 +391,19 @@ public class Dataset {
 				provenance = new String[(dataset.get("provenance").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("provenance")) {
-					provenance[i] = c.toString();
+					provenance[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String publisher = dataset.get("publisher") != null ? dataset.get("publisher").toString() : null;
+			String publisher = dataset.get("publisher") != null ? dataset.get("publisher").textValue() : null;
 
 			String[] qualifiedAttribution = null;
 			if (dataset.get("qualifiedAttribution") != null && dataset.get("qualifiedAttribution").isArray()) {
 				qualifiedAttribution = new String[(dataset.get("qualifiedAttribution").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("qualifiedAttribution")) {
-					qualifiedAttribution[i] = c.toString();
+					qualifiedAttribution[i] = c.textValue();
 					i++;
 				}
 
@@ -411,7 +413,7 @@ public class Dataset {
 				qualifiedRelation = new String[(dataset.get("qualifiedRelation").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("qualifiedRelation")) {
-					qualifiedRelation[i] = c.toString();
+					qualifiedRelation[i] = c.textValue();
 					i++;
 				}
 
@@ -422,27 +424,27 @@ public class Dataset {
 				relatedResource = new String[(dataset.get("relatedResource").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("relatedResource")) {
-					relatedResource[i] = c.toString();
+					relatedResource[i] = c.textValue();
 					i++;
 				}
 
 			}
 
-			String releaseDate = dataset.get("releaseDate") != null ? dataset.get("releaseDate").toString() : null;
+			DateTime releaseDate = dataset.get("releaseDate") != null ? new DateTime(dataset.get("releaseDate").textValue()) : null;
 
 			String[] sample = null;
 			if (dataset.get("sample") != null && dataset.get("sample").isArray()) {
 				sample = new String[(dataset.get("sample").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("sample")) {
-					sample[i] = c.toString();
+					sample[i] = c.textValue();
 					i++;
 				}
 
 			}
 
-			String seeAlso = dataset.get("seeAlso") != null ? dataset.get("seeAlso").toString() : null;
-			String source = dataset.get("source") != null ? dataset.get("source").toString() : null;
+			String seeAlso = dataset.get("seeAlso") != null ? dataset.get("seeAlso").textValue() : null;
+			String source = dataset.get("source") != null ? dataset.get("source").textValue() : null;
 			Point[] spatial = null;
 			if (dataset.get("spatial") != null && dataset.get("spatial").isArray()) {
 				System.out.println (dataset.get("spatial").size());
@@ -471,7 +473,7 @@ public class Dataset {
 				temporalResolution = new String[(dataset.get("temporalResolution").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("temporalResolution")) {
-					temporalResolution[i] = c.toString();
+					temporalResolution[i] = c.textValue();
 					i++;
 				}
 
@@ -482,29 +484,29 @@ public class Dataset {
 				theme = new String[(dataset.get("theme").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("theme")) {
-					theme[i] = c.toString();
+					theme[i] = c.textValue();
 					i++;
 				}
 
 			}
-			String[] title = null;
-			if (dataset.get("title") != null && dataset.get("title").isArray()) {
+			String title = dataset.get("title") != null ? dataset.get("title").textValue() : null;
+			/*if (dataset.get("title") != null && dataset.get("title").isArray()) {
 				title = new String[(dataset.get("title").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("title")) {
-					title[i] = c.toString();
+					title[i] = c.textValue();
 					i++;
 				}
 
-			}
-			String updateDate = dataset.get("updateDate") != null ? dataset.get("updateDate").toString() : null;
-			String version = dataset.get("version") != null ? dataset.get("version").toString() : null;
+			}*/
+			DateTime updateDate = dataset.get("updateDate") != null ? new DateTime(dataset.get("updateDate").textValue()) : null;
+			String version = dataset.get("version") != null ? dataset.get("version").textValue() : null;
 			String[] versionNotes = null;
 			if (dataset.get("versionNotes") != null && dataset.get("versionNotes").isArray()) {
 				versionNotes = new String[(dataset.get("versionNotes").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("versionNotes")) {
-					versionNotes[i] = c.toString();
+					versionNotes[i] = c.textValue();
 					i++;
 				}
 
@@ -515,7 +517,7 @@ public class Dataset {
 				wasGeneratedBy = new String[(dataset.get("wasGeneratedBy").size())];
 				int i = 0;
 				for (JsonNode c : dataset.get("wasGeneratedBy")) {
-					wasGeneratedBy[i] = c.toString();
+					wasGeneratedBy[i] = c.textValue();
 					i++;
 				}
 
@@ -531,6 +533,7 @@ public class Dataset {
 
 			System.out.println(datasetNgsi);
 			ObjectMapper mapper = new ObjectMapper();
+			mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 			// Converting the Object to JSONString
 			entity = mapper.writeValueAsString(datasetNgsi);
 

@@ -34,6 +34,8 @@ public enum OdmsCatalogueType {
   JUNAR,
   /** The orion. */
   ORION,
+  
+  NGSILD_CB,
   /** The opendatasoft. */
   OPENDATASOFT,
   /** The sparql. */
