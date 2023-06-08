@@ -8,8 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 @Getter
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class Address {
 	
 	@JsonInclude(JsonInclude.Include.NON_NULL)

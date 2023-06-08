@@ -11,8 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class DataServiceDcatAp {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String accessRights;

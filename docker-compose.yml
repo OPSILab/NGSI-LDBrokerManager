@@ -2,45 +2,46 @@ version: "3.5"
 services:
 
   ngsi-broker:
-    image: interstat/ngsi-broker
-    build: .
+    image: ghcr.io/opsilab/ngsi-ldbrokermanager:v1.1
     container_name: "ngsi-broker"
     ports:
       - 8082:8082
     environment:
       - SERVER_DEBUG=false
-      - IDRA_BASE_PATH=http://host.docker.internal:8080
+      - IDRA_BASE_PATH=http://46.17.108.72:8080
+      - HOST_ORION=http://46.17.108.118
+      - PORT_ORION=1026
     networks:
       - ngsi-broker
       
-  orion:
-    image: fiware/orion-ld
-    hostname: orion
-    container_name: fiware-orion-ld
-    expose:
-      - "1026"
-    ports:
-      - "1026:1026"
-    depends_on:
-      - db-mongo-orion
-    command: -dbhost db-mongo-orion -logLevel DEBUG
-    networks:
-      - ngsi-broker
+ # orion:
+    #image: fiware/orion-ld
+    #hostname: orion
+   # container_name: fiware-orion-ld
+    #expose:
+   #   - "1026"
+   # ports:
+   #   - "1026:1026"
+   # depends_on:
+   #   - db-mongo-orion
+    #command: -dbhost db-mongo-orion -logLevel DEBUG
+   # networks:
+   #   - ngsi-broker
       
-  db-mongo-orion:
-    image: mongo:3.6
-    hostname: db-mongo-orion
-    container_name: db-mongo-orion
-    networks:
-      - default
-    command: --nojournal
-    volumes:
-      - db-mongo-orion:/data
-    networks:
-      - ngsi-broker
+  #db-mongo-orion:
+    #image: mongo:3.6
+   # hostname: db-mongo-orion
+   # container_name: db-mongo-orion
+   # networks:
+   #   - default
+  #  command: --nojournal
+  #  volumes:
+  #    - db-mongo-orion:/data
+  #  networks:
+  #    - ngsi-broker
 
-volumes:
-  db-mongo-orion: ~
+#volumes:
+ # db-mongo-orion: ~
        
 networks:
   ngsi-broker:

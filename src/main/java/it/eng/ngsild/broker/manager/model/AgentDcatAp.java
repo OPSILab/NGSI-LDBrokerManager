@@ -16,8 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Getter
 public class AgentDcatAp {
 	public String[] agentName;

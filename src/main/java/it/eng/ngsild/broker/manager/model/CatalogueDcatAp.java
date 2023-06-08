@@ -11,8 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
+
 public class CatalogueDcatAp {
 	public String id;
 	public String type;

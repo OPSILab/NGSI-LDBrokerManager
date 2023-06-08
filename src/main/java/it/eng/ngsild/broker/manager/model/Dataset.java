@@ -23,8 +23,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class Dataset {
 	public String id;
 	public String type = "Dataset";

@@ -11,8 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class CatalogueRecordDcatAp {
 	public String id;
 	public String modificationDate;

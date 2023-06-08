@@ -1,11 +1,16 @@
-FROM openjdk:11.0.14-jdk-slim as build
+FROM openjdk:11.0.14-jdk-slim AS build
 WORKDIR /workspace/app
 
 COPY mvnw .
+RUN chmod +x mvnw
+RUN chmod 777 mvnw
+# clean up the file
+RUN sed -i 's/\r$//' mvnw
 COPY .mvn .mvn
 COPY pom.xml .
 
 COPY src src
+
 
 RUN ./mvnw -f /workspace/app/pom.xml install
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
