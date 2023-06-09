@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @Data
 public class Dataset {
 	public String id;
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String type = "Dataset";
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public AccessRight accessRights;
@@ -252,12 +253,11 @@ public class Dataset {
 			String[] datasetDistribution = null;
 
 			if (dataset.get("datasetDistribution") != null && dataset.get("datasetDistribution").isArray()) {
-				System.out.println("qui");
 				datasetDistribution = new String[(dataset.get("datasetDistribution").size())];
-				System.out.println("ciao");
 				int i = 0;
 				for (JsonNode c : dataset.get("datasetDistribution")) {
-					datasetDistribution[i] = c.textValue();
+					datasetDistribution[i] = "urn:ngsi-ld:Dataset:items:" + c.textValue();
+					System.out.println("ciao");
 					i++;
 				}
 			}

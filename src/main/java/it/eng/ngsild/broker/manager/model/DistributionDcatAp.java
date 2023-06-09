@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class DistributionDcatAp {
 	   public String id;
+	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String type;
 	   @JsonInclude(JsonInclude.Include.NON_NULL)
 	   public String[] accessService;
@@ -145,7 +146,7 @@ public class DistributionDcatAp {
 
 		
 			String[] accessService = null;
-			if (distributionDcatAp.get("title") != null && distributionDcatAp.get("accessService").isArray()) {
+			if (distributionDcatAp.get("accessService") != null && distributionDcatAp.get("accessService").isArray()) {
 				accessService = new String[(distributionDcatAp.get("accessService").size())];
 				int i = 0;
 				for (JsonNode c : distributionDcatAp.get("accessService")) {
