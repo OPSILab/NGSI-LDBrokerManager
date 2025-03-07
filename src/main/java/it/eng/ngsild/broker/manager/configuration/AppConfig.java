@@ -2,12 +2,27 @@ package it.eng.ngsild.broker.manager.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.servers.Server;
+
 @Configuration
+@OpenAPIDefinition(
+		  info = @Info(title = "NGSI-LD Broker Manager", version = "v2"),
+
+		  servers = {@Server(url = "/", description = "Default Server URL")}
+	)
+
 public class AppConfig {
 	@Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+		
+		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+		  requestFactory.setReadTimeout(600000);
+		  requestFactory.setConnectTimeout(600000);
+		  return new RestTemplate(requestFactory);
     }
 }

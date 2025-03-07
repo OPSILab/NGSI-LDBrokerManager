@@ -29,7 +29,7 @@ public class BrokerManagerController {
 	}
 	
 	// ADDING CATALOGUE, POST
-	@RequestMapping(value="/startProcess", method=RequestMethod.POST)  
+	//@RequestMapping(value="/startProcess", method=RequestMethod.POST)  
 	@CrossOrigin(origins = {"${idra.basepath}"})
 	public Response start(@Valid @RequestBody Configurations config) {
 		try {
@@ -46,7 +46,7 @@ public class BrokerManagerController {
 	}
 	
 	// DELETING CATALOGUE, POST
-	@RequestMapping(value="/deleteCatalogue", method=RequestMethod.POST)  
+	//@RequestMapping(value="/deleteCatalogue", method=RequestMethod.POST)  
 	@CrossOrigin(origins = {"${idra.basepath}"})
 	public Response delete(@Valid @RequestBody Configurations config) {
 		try {

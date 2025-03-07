@@ -37,6 +37,7 @@ public class Dataset {
 	public String creator;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String dataProvider;
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] datasetDescription;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] datasetDistribution;
@@ -93,7 +94,7 @@ public class Dataset {
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String source;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public Point[] spatial;
+	public GeoProperty spatial;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] temporalResolution;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -119,7 +120,7 @@ public class Dataset {
 			String[] isVersionOf, String[] keyword, String landingPage, String[] language, String name,
 			String[] otherIdentifier, String[] owner, String[] provenance, String publisher,
 			String[] qualifiedAttribution, String[] qualifiedRelation, String[] relatedResource, DateTime releaseDate,
-			String[] sample, String seeAlso, String source, Point[] spatial, String[] temporalResolution,
+			String[] sample, String seeAlso, String source, GeoProperty spatial, String[] temporalResolution,
 			String[] theme, String title, DateTime updateDate, String version, String[] versionNotes,
 			String[] wasGeneratedBy) {
 		super();
@@ -184,8 +185,8 @@ public class Dataset {
 				+ ", owner=" + Arrays.toString(owner) + ", provenance=" + Arrays.toString(provenance) + ", publisher="
 				+ publisher + ", qualifiedAttribution=" + Arrays.toString(qualifiedAttribution) + ", qualifiedRelation="
 				+ Arrays.toString(qualifiedRelation) + ", relatedResource=" + Arrays.toString(relatedResource)
-				+ ", releaseDate=" + releaseDate.toString() + ", sample=" + Arrays.toString(sample) + ", seeAlso=" + seeAlso
-				+ ", source=" + source + ", spatial=" + Arrays.toString(spatial) + ", temporalResolution="
+				+ ", releaseDate=" + releaseDate + ", sample=" + Arrays.toString(sample) + ", seeAlso=" + seeAlso
+				+ ", source=" + source + ", spatial=" + spatial + ", temporalResolution="
 				+ Arrays.toString(temporalResolution) + ", theme=" + Arrays.toString(theme) + ", title="
 				+ title + ", updateDate=" + updateDate + ", version=" + version + ", versionNotes="
 				+ Arrays.toString(versionNotes) + ", wasGeneratedBy=" + Arrays.toString(wasGeneratedBy) + "]";
@@ -443,28 +444,38 @@ public class Dataset {
 
 			String seeAlso = dataset.get("seeAlso") != null ? dataset.get("seeAlso").textValue() : null;
 			String source = dataset.get("source") != null ? dataset.get("source").textValue() : null;
-			Point[] spatial = null;
+			GeoProperty spatial = null;
 			if (dataset.get("spatial") != null && dataset.get("spatial").isArray()) {
-				System.out.println (dataset.get("spatial").size());
-			spatial= new Point[dataset.get("spatial").size()];
-				int i = 0;
-				for (JsonNode c : dataset.get("spatial")) {
-					
-					System.out.println (c);
-					Double coordinate[] = new Double[2];
-					int j = 0;
-					for (JsonNode coord : c.get("coordinates")) {
-						System.out.println (coord);
-						coordinate[j] = coord.asDouble();
-						j++;
+				System.out.println("spatial map");
+				spatial = new GeoProperty(dataset.get("spatial").get(0).get("type").textValue(),dataset.get("spatial").get(0).get("coordinates"));
+				
+				
+				/**if(dataset.get("spatial").get(0).get("type").textValue() == "Point") {
+					Point[] spatial = null;
+					System.out.println (dataset.get("spatial").size());
+				spatial= new Point[dataset.get("spatial").size()];
+					int i = 0;
+					for (JsonNode c : dataset.get("spatial")) {
+						
+						System.out.println (c);
+						Double coordinate[] = new Double[2];
+						int j = 0;
+						for (JsonNode coord : c.get("coordinates")) {
+							System.out.println (coord);
+							coordinate[j] = coord.asDouble();
+							j++;
+						}
+						System.out.println(coordinate);
+						spatial[i] = new Point("Point",coordinate);
+						i++;
 					}
-					System.out.println(coordinate);
-					spatial[i] = new Point("Point",coordinate);
-					i++;
-				}
-				System.out.println(i);
+				} else if(dataset.get("spatial").get(0).get("type").textValue() == "Polygon") {
+					
+				}**/
+		
+				
 			}
-			System.out.println(spatial.toString());
+		
 
 			String[] temporalResolution = null;
 			if (dataset.get("temporalResolution") != null && dataset.get("temporalResolution").isArray()) {

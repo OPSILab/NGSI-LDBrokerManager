@@ -10,8 +10,8 @@ import java.util.List;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.jena.atlas.json.JSON;
-
-
+import org.apache.jena.atlas.json.io.parser.JSONParser;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,10 +22,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-//import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 //import org.springframework.web.bind.annotation.GetMapping;
 //import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 //import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -81,7 +83,7 @@ import it.eng.ngsild.broker.manager.model.DistributionDcatAp;
 
 //controller per esporre l'API per la conversione e l'invio dell'oggetto DCAT-AP:
 @RestController
-@RequestMapping("/api")
+@RequestMapping(value = "/api")
 public class DcatApController {
 	@Value("${contexBroker.host_orion}")
 	private String hostContextBroker;
@@ -97,132 +99,50 @@ public class DcatApController {
 	@RequestMapping(value = "/dataset", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new dataset into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
             content = @io.swagger.v3.oas.annotations.media.Content (examples = {
-                    @ExampleObject(value="{  \r\n"
-                    		+ "  \"id\": \"dataset1\",  \r\n"
-                    		+ "  \"dateCreated\": \"1985-07-20T10:08:50Z\",  \r\n"
-                    		+ "  \"dateModified\": \"2015-07-13T03:09:32Z\",  \r\n"
-                    		+ "  \"source\": \"urn:ngsi-ld:Dataset:items:YSWN:41266715\",  \r\n"
-                    		+ "  \"name\": \"First table field check. Agency writer size. Meeting nice nothing after ever.\",  \r\n"
-                    		+ "  \"alternateName\": \"Apply popular what suddenly environmental at system. Situation son future example task. Machine year positive security better.\",  \r\n"
-                    		+ "  \"description\": \"Own fast suffer your. Spend per police. Less skill much run letter shoulder know office. Discuss of director enter process world possible out.\",  \r\n"
-                    		+ "  \"dataProvider\": \"Investment five beat become resource individual assume. Yard seat memory bed forget heart crime.\",  \r\n"
-                    		+ "  \"owner\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:QZHN:39684072\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:LADQ:07842317\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"seeAlso\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:JGFW:76050330\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:XUMS:21710022\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"type\": \"typeExample\",  \r\n"
-                    		+ "  \"datasetDescription\": [  \r\n"
-                    		+ "    \"Sit worry pay during TV increase family. Social drop organization method. Fact treatment throw detail.\",  \r\n"
-                    		+ "    \"Experience similar officer social us item lay prepare. Price year close better.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"title\":  \"Class skill deal there no language himself. After rule mouth tell economy risk. Glass personal person center.\",\r\n"
-                    		+ "  \"contactPoint\": [  \r\n"
-                    		+ "    \"Minute write his experience similar right.\",  \r\n"
-                    		+ "    \"Experience away remain.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"datasetDistribution\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:KJVK:30944451\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:MMWU:84196227\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"keyword\": [  \r\n"
-                    		+ "    \"Free analysis reduce. Owner Republican institution six science a usually. Value land executive design.\",  \r\n"
-                    		+ "    \"Bag recently might far plan nearly scene example. Trouble official dream author job claim join different. Success full debate here check attorney size.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"publisher\": \"Statement which consumer product thought total. Nothing concern picture involve paper nor kid.\",  \r\n"
-                    		+ "  \"spatial\": [  \r\n"
-                    		+ "    {  \r\n"
-                    		+ "      \"type\": \"Point\",  \r\n"
-                    		+ "      \"coordinates\": [  \r\n"
-                    		+ "          \r\n"
-                    		+ "        109.478534,\r\n"
-                    		+ "        9.922458 \r\n"
-                    		+ "      ]  \r\n"
-                    		+ "    }  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"temporal\": [  \r\n"
-                    		+ "    \"2017-04-03T02:35:57Z\",  \r\n"
-                    		+ "    \"1978-06-15T04:39:05Z\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"theme\": [  \r\n"
-                    		+ "    \"Win catch job number find number. Leader reason top arrive night. Movement expect security high hair whom three yeah.\",  \r\n"
-                    		+ "    \"Respond character continue gun. Grow best choice group manage over find.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"accessRights\": \"non-public\",  \r\n"
-                    		+ "  \"creator\": \"Wall true factor several nothing. Mission want kind design. Who cause health father director either cause.\",  \r\n"
-                    		+ "  \"documentation\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:EDTJ:28919577\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:GKJO:30040605\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"frequency\": \"Case fine feel that. Government executive issue police chance believe.\",  \r\n"
-                    		+ "  \"hasVersion\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:SQSB:90831182\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:FFVZ:69502935\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"identifier\": \"urn:ngsi-ld:Dataset:items:MBNQ:57176010\",  \r\n"
-                    		+ "  \"isReferencedBy\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:YQRP:33454193\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:RBND:48628164\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"isVersionOf\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:AMAC:16896252\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:IPSO:04920226\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"landingPage\": \"urn:ngsi-ld:Dataset:items:UMBA:72418275\",  \r\n"
-                    		+ "  \r\n"
-                    		+ "  \"language\": [  \r\n"
-                    		+ "    \"Environment site ability night player. Head able American example call again.\",  \r\n"
-                    		+ "    \"Receive my risk leave matter prepare. Worker admit draw others remember establish necessary one.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"otherIdentifier\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:ZNYR:18053145\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:ICBO:96194869\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"provenance\": [  \r\n"
-                    		+ "    \"Air success movie nation attention. Fight do natural brother street.\",  \r\n"
-                    		+ "    \"Future against sing especially answer sea. Difference effect company.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"qualifiedAttribution\": [  \r\n"
-                    		+ "    \"Central born manage evidence data. Answer doctor visit ready physical fact. Quite allow however certain lose heart.\",  \r\n"
-                    		+ "    \"Home interesting range ever. Magazine the instead particularly. Late have collection.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"qualifiedRelation\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:ITFK:67369057\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:ZJWX:10596189\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"relatedResource\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:FXEY:35067714\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:YYOL:47950545\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"releaseDate\": \"1983-07-16T12:51:26Z\",  \r\n"
-                    		+ "  \r\n"
-                    		+ "  \"sample\": [  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:QJPZ:50290394\",  \r\n"
-                    		+ "    \"urn:ngsi-ld:Dataset:items:ZSSA:73451152\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"spatialResolution\": [  \r\n"
-                    		+ "    864.6,  \r\n"
-                    		+ "    864.6  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"temporalResolution\": [  \r\n"
-                    		+ "    864.6,  \r\n"
-                    		+ "    864.6  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"datasetType\": \"Else memory if. Whose group through despite cause. Sense peace economy travel.\",  \r\n"
-                    		+ "  \"updateDate\": \"2017-12-27T03:37:52Z\",  \r\n"
-                    		+ "  \"version\": \"Financial role together range. Nice government first policy daughter need kind. Employee source nature add rest human station. Ability management test during foot that course nothing.\",  \r\n"
-                    		+ "  \"versionNotes\": [  \r\n"
-                    		+ "    \"Sort language ball floor. Your majority feeling fact by four two.\",  \r\n"
-                    		+ "    \"Natural explain before something first drug contain start. Party prevent live.\"  \r\n"
-                    		+ "  ],  \r\n"
-                    		+ "  \"wasGeneratedBy\": [  \r\n"
-                    		+ "    \"Theory type successful together. Raise study modern miss dog Democrat quickly.\",  \r\n"
-                    		+ "    \"Every manage political record word group food break. Picture suddenly drug rule bring determine some forward. Beyond chair recently and.\"  \r\n"
-                    		+ "  ]  \r\n"
-                    		+ "}  "),
+                    @ExampleObject(value="{\r\n"
+                    		+ "   \"id\":\"Flanders:123456\",\r\n"
+                    		+ "   \"title\":\"Class skill deal there no language himself. After rule mouth tell economy risk. Glass personal person center.\",\r\n"
+                    		+ "   \"datasetDescription\":[\r\n"
+                    		+ "      \"Sit worry pay during TV increase family. Social drop organization method. Fact treatment throw detail.\",\r\n"
+                    		+ "      \"Experience similar officer social us item lay prepare. Price year close better.\"\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"description\":\"Own fast suffer your. Spend per police. Less skill much run letter shoulder know office. Discuss of director enter process world possible out.\",\r\n"
+                    		+ "   \"name\":\"First table field check. Agency writer size. Meeting nice nothing after ever.\",\r\n"
+                    		+ "   \"publisher\":\"Statement which consumer product thought total. Nothing concern picture involve paper nor kid.\",\r\n"
+                    		+ "   \"spatial\":[\r\n"
+                    		+ "      {\r\n"
+                    		+ "         \"type\":\"Point\",\r\n"
+                    		+ "         \"coordinates\":[\r\n"
+                    		+ "            109.478534,\r\n"
+                    		+ "            9.922458\r\n"
+                    		+ "         ]\r\n"
+                    		+ "      }\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"releaseDate\":\"1983-07-16T12:51:26Z\",\r\n"
+                    		+ "   \"theme\":[\r\n"
+                    		+ "      \"Win catch job number find number. Leader reason top arrive night. Movement expect security high hair whom three yeah.\",\r\n"
+                    		+ "      \"Respond character continue gun. Grow best choice group manage over find.\"\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"contactPoint\":[\r\n"
+                    		+ "      \"Minute write his experience similar right.\",\r\n"
+                    		+ "      \"Experience away remain.\"\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"keyword\":[\r\n"
+                    		+ "      \"Free analysis reduce. Owner Republican institution six science a usually. Value land executive design.\",\r\n"
+                    		+ "      \"Bag recently might far plan nearly scene example. Trouble official dream author job claim join different. Success full debate here check attorney size.\"\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"accessRights\":\"non-public\",\r\n"
+                    		+ "   \"frequency\":\"Case fine feel that. Government executive issue police chance believe.\",\r\n"
+                    		+ "   \"datasetDistribution\":[\r\n"
+                    		+ "      \"KJVK:30944452\"\r\n"
+                    		+ "   ],\r\n"
+                    		+ "   \"creator\":\"Wall true factor several nothing. Mission want kind design. Who cause health father director either cause.\",\r\n"
+                    		+ "   \"version\":\"Financial role together range. Nice government first policy daughter need kind. Employee source nature add rest human station. Ability management test during foot that course nothing.\",\r\n"
+                    		+ "   \"versionNotes\":[\r\n"
+                    		+ "      \"Sort language ball floor. Your majority feeling fact by four two.\",\r\n"
+                    		+ "      \"Natural explain before something first drug contain start. Party prevent live.\"\r\n"
+                    		+ "   ]\r\n"
+                    		+ "}"),
                   
             })))
     public ResponseEntity<?> createDcatAp( @RequestBody JsonNode dataset ) {
@@ -231,7 +151,7 @@ public class DcatApController {
     	ObjectMapper map = new ObjectMapper();  
     	JsonNode node = null;
     	
-    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+    	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		try {
 			try {
 				node = map.readTree(dataset.toString());
@@ -253,7 +173,7 @@ public class DcatApController {
 		
 		}
     }
-	@RequestMapping(value = "/agentdcatap", method = RequestMethod.POST, consumes="application/json")
+	//@RequestMapping(value = "/agentdcatap", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new agent into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
             content = @io.swagger.v3.oas.annotations.media.Content (examples = {
                     @ExampleObject(value="\r\n"
@@ -330,7 +250,7 @@ public class DcatApController {
 		}
     }
 	
-	@RequestMapping(value = "/cataloguedcatap", method = RequestMethod.POST, consumes="application/json")
+	//@RequestMapping(value = "/cataloguedcatap", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new catalogue into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
     content = @io.swagger.v3.oas.annotations.media.Content (examples = {
             @ExampleObject(value="{  \r\n"
@@ -447,7 +367,7 @@ public class DcatApController {
 			return null;
 		}
     }
-	@RequestMapping(value = "/cataloguerecorddcatap", method = RequestMethod.POST, consumes="application/json")
+	//@RequestMapping(value = "/cataloguerecorddcatap", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new catalogueRecord into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
     content = @io.swagger.v3.oas.annotations.media.Content (examples = {
             @ExampleObject(value="{  \r\n"
@@ -534,7 +454,7 @@ public class DcatApController {
 		}
     }
 	
-	@RequestMapping(value = "/dataservicedcatap", method = RequestMethod.POST, consumes="application/json")
+	//@RequestMapping(value = "/dataservicedcatap", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new DataService into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
     content = @io.swagger.v3.oas.annotations.media.Content (examples = {
             @ExampleObject(value="{  \r\n"
@@ -633,80 +553,21 @@ public class DcatApController {
 	@RequestMapping(value = "/distributiondcatap", method = RequestMethod.POST, consumes="application/json")
 	@Operation(summary = "Create a new distribution into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
     content = @io.swagger.v3.oas.annotations.media.Content (examples = {
-            @ExampleObject(value="\r\n"
-            		+ "{  \r\n"
-            		+ "    \"id\": \"KJVK:30944451\",   \r\n"
-            		+ "    \"accessService\": [  \r\n"
-            		+ "        \"\"  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"accessUrl\": [  \r\n"
-            		+ "        \"\"  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"address\": {  \r\n"
-            		+ "        \"addressCountry\": \"Luxembourg\",  \r\n"
-            		+ "        \"addressLocality\": \"Luxembourg\",  \r\n"
-            		+ "        \"addressRegion\": \"Luxembourg\",  \r\n"
-            		+ "        \"postOfficeBoxNumber\": \"\",  \r\n"
-            		+ "        \"postalCode\": \"24004\",  \r\n"
-            		+ "        \"streetAddress\": \"Luxembourg platz 2\"  \r\n"
-            		+ "    },  \r\n"
-            		+ "    \"alternateName\": \"csv\",  \r\n"
-            		+ "    \"areaServed\": \"European Union.\",  \r\n"
-            		+ "    \"availability\": \"yes\",  \r\n"
-            		+ "    \"byteSize\": 43503,  \r\n"
-            		+ "    \"checksum\": \"H3FR.\",  \r\n"
-            		+ "    \"compressionFormat\": \"\",  \r\n"
-            		+ "    \"dataProvider\": \"Meloda.org\",  \r\n"
-            		+ "    \"dateCreated\": \"1993-08-16T05:35:56Z\",  \r\n"
-            		+ "    \"dateModified\": \"1970-07-14T10:48:19Z\",  \r\n"
-            		+ "    \"description\": \"Distribution of open data portals in csv\",  \r\n"
-            		+ "    \"documentation\": [],  \r\n"
-            		+ "    \"downloadURL\": \"urn:ngsi-ld:DistributionDCAT-AP:items:ICPI:96947751\",  \r\n"
-            		+ "    \"format\": \" text/csv\",  \r\n"
-            		+ "    \"hasPolicy\": \"Open data policy.\",  \r\n"
-            		+ "    \"language\": [  \r\n"
-            		+ "        \"EN\",  \r\n"
-            		+ "        \"ES\"  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"license\": \"CC-BY\",  \r\n"
-            		+ "    \"linkedSchemas\": [],  \r\n"
-            		+ "    \"location\": {  \r\n"
-            		+ "        \"coordinates\": [  \r\n"
-            		+ "            -67.057831,  \r\n"
-            		+ "            67.968509  \r\n"
-            		+ "        ],  \r\n"
-            		+ "        \"type\": \"Point\"  \r\n"
-            		+ "    },  \r\n"
-            		+ "    \"mediaType\": \"\",  \r\n"
-            		+ "    \"modifiedDate\": \"1986-03-28T19:56:43Z\",  \r\n"
-            		+ "    \"name\": \"csv portals distribution\",  \r\n"
-            		+ "    \"owner\": [  \r\n"
-            		+ "        \"urn:ngsi-ld:DistributionDCAT-AP:items:HZAC:24935175\",  \r\n"
-            		+ "        \"urn:ngsi-ld:DistributionDCAT-AP:items:AQGQ:50019342\"  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"packagingFormat\": \"zip\",  \r\n"
-            		+ "    \"releaseDate\": \"1997-05-06T05:04:10Z\",  \r\n"
-            		+ "    \"rights\": \"copyleft\",  \r\n"
-            		+ "    \"seeAlso\": [  \r\n"
-            		+ "        \"urn:ngsi-ld:DistributionDCAT-AP:items:TYQY:03354957\",  \r\n"
-            		+ "        \"urn:ngsi-ld:DistributionDCAT-AP:items:VZQW:12690544\"  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"source\": \"\",  \r\n"
-            		+ "    \"spatialResolution\": [  \r\n"
-            		+ "        0.5,  \r\n"
-            		+ "        0.5  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"status\": \"Withdrawn\",  \r\n"
-            		+ "    \"temporalResolution\": [  \r\n"
-            		+ "        2,  \r\n"
-            		+ "        10  \r\n"
-            		+ "    ],  \r\n"
-            		+ "    \"title\":\"Dataset base\",\r\n"
-            		+ "      \r\n"
-            		+ "    \"@context\": [  \r\n"
-            		+ "        \"https://raw.githubusercontent.com/smart-data-models/dataModel.DCAT-AP/master/context.jsonld\"  \r\n"
-            		+ "    ]  \r\n"
-            		+ "}  "),
+            @ExampleObject(value="{ \r\n"
+            		+ "\"id\": \"KJVK:30944452\",\r\n"
+            		+ "\"title\":\"another distribution\",\r\n"
+            		+ "\"description\": \"Distribution of open data portals in csv\",\r\n"
+            		+ "\"accessUrl\": [\"\"],\r\n"
+            		+ "\"downloadURL\": \"urn:ngsi-ld:DistributionDCAT-AP:items:ICPI:96947751\",\r\n"
+            		+ "\"format\": \" text/csv\",\r\n"
+            		+ "\"byteSize\": 43503,\r\n"
+            		+ "\"checksum\": \"H3FR.\",\r\n"
+            		+ "\"rights\": \"copyleft\",\r\n"
+            		+ "\"mediaType\": \"\",\r\n"
+            		+ "\"license\": \"CC-BY\",\r\n"
+            		+ "\"releaseDate\": \"1997-05-06T05:04:10Z\",\r\n"
+            		+ "\"modifiedDate\": \"1986-03-28T19:56:43Z\"\r\n"
+            		+ "}"),
             
       })))
     public ResponseEntity<?> createDistributionDcatap(@RequestBody JsonNode agent) {
@@ -714,7 +575,7 @@ public class DcatApController {
     	ObjectMapper map = new ObjectMapper();  
     	JsonNode node = null;
     	
-    	String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+    	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = distributionNgsi.convertToNgsi(node);
@@ -779,7 +640,7 @@ public List<Object> getAllDataset() {
 		int offset = 0;
 		List<Object> dataset= new ArrayList();
 	
-		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		String contexBrokerEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		ResponseEntity<Object[]> response;
 		do {
 			System.out.println("hostContextBroker: " + hostContextBroker);
@@ -792,7 +653,7 @@ public List<Object> getAllDataset() {
 		System.out.println(dataset);
 		return dataset;
     }
-@GetMapping("/cataloguedcatap")
+//@GetMapping("/cataloguedcatap")
 public List<Object> getAllCataloguedcatap() {
 	  int limit = 20;
 		int offset = 0;
@@ -811,7 +672,7 @@ public List<Object> getAllCataloguedcatap() {
 		System.out.println(dataset);
 		return dataset;
     }
-@GetMapping("/cataloguerecorddcatap")
+//@GetMapping("/cataloguerecorddcatap")
 public List<Object> getAllCatalogueRecordDcatap() {
 	  int limit = 20;
 		int offset = 0;
@@ -831,7 +692,7 @@ public List<Object> getAllCatalogueRecordDcatap() {
 		return dataset;
     }
 
-@GetMapping("/agentdcatap")
+//@GetMapping("/agentdcatap")
 public List<Object> getAllAgentdcatap() {
 	  int limit = 20;
 		int offset = 0;
@@ -847,7 +708,7 @@ public List<Object> getAllAgentdcatap() {
 		} while (!Arrays.asList(response.getBody()).isEmpty());
 		return dataset;
     }
-@GetMapping("/dataservicedcatap")
+//@GetMapping("/dataservicedcatap")
 public List<Object> getAllDataservicedcatap() {
 	  int limit = 20;
 		int offset = 0;
@@ -870,7 +731,7 @@ public List<Object> getAllDistributiondcatap() {
 		int offset = 0;
 		List<Object> dataset= new ArrayList();
 	
-		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
+		String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		ResponseEntity<Object[]> response;
 		do {
 			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=DistributionDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
@@ -881,11 +742,262 @@ public List<Object> getAllDistributiondcatap() {
 		return dataset;
     }
 
+@DeleteMapping("/dataset/{id}")
+public void deleteEntity(@PathVariable("id") String datasetId) {
+    // Delete the dataset in this method with the id. 
+	String id = null;
+	String[] idSplit = null;
+	if (datasetId.contains(":")) {
+		 idSplit = datasetId.split(":");
+		 if (idSplit.length > 0 && !datasetId.contains("urn:ngsi-ld:Dataset:id:") ) {
+			 id = "urn:ngsi-ld:Dataset:id";
+			 for( int i= 0; i < idSplit.length ; i++) {
+				 id = id.concat(":" + idSplit[i]);
+			 } 
+		 }
+		 else if (datasetId.contains("urn:ngsi-ld:Dataset:id:")) {
+			id = datasetId;
+			 }
+	} else {
+		id = "urn:ngsi-ld:Dataset:id:" + datasetId; 
+	}
+			
+	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + id;
+	try {
+	
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		final HttpEntity<String> entity = new HttpEntity<String>( headers);
+		restTemplate.delete(contexBrokerEndpoint);
+	} catch (HttpClientErrorException e) {
+		System.out.println(e.getMessage());
+		// handle exception here
+		//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+	}
+	
+}
+public void removeEmptyAndNullFields(Object object) {
+    if (object instanceof JSONArray) {
+        JSONArray array = (JSONArray) object;
+        for (int i = 0; i < array.length(); ++i) 
+          removeEmptyAndNullFields(array.get(i));
+    } else if (object instanceof JSONObject) {
+        JSONObject json = (JSONObject) object;
+        JSONArray names = json.names();
+        if (names == null) return;
+        for (int i = 0; i < names.length(); ++i) {
+            String key = names.getString(i);
+            try{
+            if (json.isNull(key) || ((JSONArray) json.get(key)).length() == 0) {
+                json.remove(key);
+            } else {
+                removeEmptyAndNullFields(json.get(key));
+            }}
+           catch (Exception e){}
+        
+    }
+    }
+}
+
+@RequestMapping(value = "/dataset/{id}", method = RequestMethod.PATCH, consumes="application/json")
+@Operation(summary = "Update the dataset into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
+        content = @io.swagger.v3.oas.annotations.media.Content (examples = {
+                @ExampleObject(value="{\r\n"
+                		+ "   \"title\":\"Class skill deal there no language himself. After rule mouth tell economy risk. Glass personal person center.\",\r\n"
+                		+ "   \"datasetDescription\":[\r\n"
+                		+ "      \"Sit worry pay during TV increase family. Social drop organization method. Fact treatment throw detail.\",\r\n"
+                		+ "      \"Experience similar officer social us item lay prepare. Price year close better.\"\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"description\":\"Own fast suffer your. Spend per police. Less skill much run letter shoulder know office. Discuss of director enter process world possible out.\",\r\n"
+                		+ "   \"name\":\"First table field check. Agency writer size. Meeting nice nothing after ever.\",\r\n"
+                		+ "   \"publisher\":\"Statement which consumer product thought total. Nothing concern picture involve paper nor kid.\",\r\n"
+                		+ "   \"spatial\":[\r\n"
+                		+ "      {\r\n"
+                		+ "         \"type\":\"Point\",\r\n"
+                		+ "         \"coordinates\":[\r\n"
+                		+ "            109.478534,\r\n"
+                		+ "            9.922458\r\n"
+                		+ "         ]\r\n"
+                		+ "      }\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"releaseDate\":\"1983-07-16T12:51:26Z\",\r\n"
+                		+ "   \"theme\":[\r\n"
+                		+ "      \"Win catch job number find number. Leader reason top arrive night. Movement expect security high hair whom three yeah.\",\r\n"
+                		+ "      \"Respond character continue gun. Grow best choice group manage over find.\"\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"contactPoint\":[\r\n"
+                		+ "      \"Minute write his experience similar right.\",\r\n"
+                		+ "      \"Experience away remain.\"\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"keyword\":[\r\n"
+                		+ "      \"Free analysis reduce. Owner Republican institution six science a usually. Value land executive design.\",\r\n"
+                		+ "      \"Bag recently might far plan nearly scene example. Trouble official dream author job claim join different. Success full debate here check attorney size.\"\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"accessRights\":\"non-public\",\r\n"
+                		+ "   \"frequency\":\"Case fine feel that. Government executive issue police chance believe.\",\r\n"
+                		+ "   \"datasetDistribution\":[\r\n"
+                		+ "      \"KJVK:30944452\"\r\n"
+                		+ "   ],\r\n"
+                		+ "   \"creator\":\"Wall true factor several nothing. Mission want kind design. Who cause health father director either cause.\",\r\n"
+                		+ "   \"version\":\"Financial role together range. Nice government first policy daughter need kind. Employee source nature add rest human station. Ability management test during foot that course nothing.\",\r\n"
+                		+ "   \"versionNotes\":[\r\n"
+                		+ "      \"Sort language ball floor. Your majority feeling fact by four two.\",\r\n"
+                		+ "      \"Natural explain before something first drug contain start. Party prevent live.\"\r\n"
+                		+ "   ]\r\n"
+                		+ "}"),
+              
+        })))
+public String updateDataset(@PathVariable("id") String datasetId, @RequestBody JsonNode dataset ) {
+	//System.out.println(dataset);
+	Dataset datasetNgsi = new Dataset();
+	ObjectMapper map = new ObjectMapper();  
+	JsonNode node = null;
+	System.out.println(datasetId);
+	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
+	try {
+		try {
+			node = map.readTree(dataset.toString());
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		String entityString = datasetNgsi.convertToNgsi(node);
+		JSONObject jsonObj = new JSONObject(entityString);
+		this.removeEmptyAndNullFields(jsonObj);
+		jsonObj.remove("id");
+		jsonObj.remove("type");
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+	
+	System.out.println(jsonObj.toString());
+		final HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
+		System.out.println(contexBrokerEndpoint);
+		String response = restTemplate.patchForObject(contexBrokerEndpoint, entity, String.class);
+	     return response;
+	} catch (HttpClientErrorException e) {
+		System.out.println(e.getMessage());
+		// handle exception here
+		return e.getMessage();
+	
+	}
+}
+
 
     
+@DeleteMapping("/distribution/{id}")
+public void deleteDistribution(@PathVariable("id") String distributionId) {
+    // Delete the distribution in this method with the id. 
+	String id = null;
+	String[] idSplit = null;
+	if (distributionId.contains(":")) {
+		 idSplit = distributionId.split(":");
+		 if (idSplit.length > 0 && !distributionId.contains("urn:ngsi-ld:DistributionDCAT-AP:id:") ) {
+			 id = "urn:ngsi-ld:DistributionDCAT-AP:id";
+			 for( int i= 0; i < idSplit.length ; i++) {
+				 id = id.concat(":" + idSplit[i]);
+			 } 
+		 }
+		 else if (distributionId.contains("urn:ngsi-ld:DistributionDCAT-AP:id:")) {
+			id = distributionId;
+			 }
+	} else {
+		id = "urn:ngsi-ld:DistributionDCAT-APa :id:" + distributionId; 
+	}
+			
+	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + id;
+	try {
+	
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		final HttpEntity<String> entity = new HttpEntity<String>( headers);
+		restTemplate.delete(contexBrokerEndpoint);
+	} catch (HttpClientErrorException e) {
+		System.out.println(e.getMessage());
+		// handle exception here
+		//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+	}
+	
+}
 
-    
-    
+
+@RequestMapping(value = "/distributiondcatap/{{id}}", method = RequestMethod.PATCH, consumes="application/json")
+@Operation(summary = "Update a distribution into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
+content = @io.swagger.v3.oas.annotations.media.Content (examples = {
+        @ExampleObject(value="{ \r\n"
+        		+ "\"title\":\"another distribution\",\r\n"
+        		+ "\"description\": \"Distribution of open data portals in csv\",\r\n"
+        		+ "\"accessUrl\": [\"\"],\r\n"
+        		+ "\"downloadURL\": \"urn:ngsi-ld:DistributionDCAT-AP:items:ICPI:96947751\",\r\n"
+        		+ "\"format\": \" text/csv\",\r\n"
+        		+ "\"byteSize\": 43503,\r\n"
+        		+ "\"checksum\": \"H3FR.\",\r\n"
+        		+ "\"rights\": \"copyleft\",\r\n"
+        		+ "\"mediaType\": \"\",\r\n"
+        		+ "\"license\": \"CC-BY\",\r\n"
+        		+ "\"releaseDate\": \"1997-05-06T05:04:10Z\",\r\n"
+        		+ "\"modifiedDate\": \"1986-03-28T19:56:43Z\"\r\n"
+        		+ "}"),
+        
+  })))
+public String updateDistribution(@PathVariable("id") String distributionId, @RequestBody JsonNode distribution ) {
+	DistributionDcatAp distributionNgsi = new DistributionDcatAp();
+	ObjectMapper map = new ObjectMapper();  
+	JsonNode node = null;
+	System.out.println(distributionId);
+	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + distributionId + "/attrs";
+	try {
+		try {
+			node = map.readTree(distribution.toString());
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		String entityString = distributionNgsi.convertToNgsi(node);
+		JSONObject jsonObj = new JSONObject(entityString);
+		this.removeEmptyAndNullFields(jsonObj);
+		jsonObj.remove("id");
+		jsonObj.remove("type");
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+	
+	System.out.println(jsonObj.toString());
+		final HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
+		System.out.println(contexBrokerEndpoint);
+		String response = restTemplate.patchForObject(contexBrokerEndpoint, entity, String.class);
+	     return response;
+	} catch (HttpClientErrorException e) {
+		System.out.println(e.getMessage());
+		// handle exception here
+		return e.getMessage();
+	
+	}
+}
+
+
+//API POST
+	@RequestMapping(value = "/delete/entities", method = RequestMethod.POST, consumes="application/json")
+	@Operation(summary = "Delete", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
+           content = @io.swagger.v3.oas.annotations.media.Content (examples = {
+                   @ExampleObject(value="[\"entity-1 id\", \"entity-2 id\", \"...\",\"entity-n id\"]"),
+                 
+           })))
+   public String deleteEntitiesDcatAp( @RequestBody JsonNode listEntities ) {
+		String contextBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entityOperations/delete";
+		
+		try {
+			String response = restTemplate.postForObject(contextBrokerEndpoint, listEntities, String.class);
+		     return response;
+		   
+
+			
+		}catch(HttpClientErrorException e ) {
+			return e.getMessage();
+		}
+		
+		
+
+	}
+	
     
    
 }
