@@ -202,6 +202,7 @@ public class Dataset {
 				break;
 			} else if (accessRight.name().toLowerCase().equalsIgnoreCase(name)) {
 				result = accessRight;
+				System.out.println(result);
 				break;
 			}
 		}
@@ -215,14 +216,19 @@ public class Dataset {
 		String entity = null;
 		try {
 			// Mapping fields
-			String idDataset = dataset.get("id") != null ? dataset.get("id").textValue() : UUID.randomUUID().toString();
+			System.out.println("id prima" + dataset.get("id"));
+			String idDataset = (dataset.get("id") != null && !dataset.get("id").isNull())
+				    ? dataset.get("id").textValue()
+				    	    : UUID.randomUUID().toString();
+			System.out.println("id dopo" + idDataset);
 			String id = "urn:ngsi-ld:Dataset:id:" + idDataset;
 			String type = "Dataset";
+			AccessRight accessRights = null;
 			if (dataset.get("accessRights") != null) {
-				AccessRight accessRights = this.findByNameAccessRight(dataset.get("accessRights").textValue());
+				accessRights = this.findByNameAccessRight(dataset.get("accessRights").textValue());
 			}
 
-			System.out.println(accessRights);
+			
 			String alternateName = dataset.get("alternateName") != null ? dataset.get("alternateName").textValue()
 					: null;
 			String[] contactPoint = null;

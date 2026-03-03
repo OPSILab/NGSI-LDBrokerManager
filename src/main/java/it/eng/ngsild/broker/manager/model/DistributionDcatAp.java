@@ -139,8 +139,10 @@ public class DistributionDcatAp {
 		
 		String entity = null;
 		try {
-			String idDataset = distributionDcatAp.get("id") != null ? distributionDcatAp.get("id").textValue()
-					: UUID.randomUUID().toString();
+			
+			String idDataset = (distributionDcatAp.get("id") != null && !distributionDcatAp.get("id").isNull())
+				    ? distributionDcatAp.get("id").textValue()
+				    	    : UUID.randomUUID().toString();
 			String id = "urn:ngsi-ld:DistributionDCAT-AP:id:" + idDataset;
 			String type = "DistributionDCAT-AP";
 

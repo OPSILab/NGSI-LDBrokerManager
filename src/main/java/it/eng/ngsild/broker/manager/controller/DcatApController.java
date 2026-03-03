@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -472,7 +473,7 @@ public class DcatApController {
             		+ "  \"alternateName\": \"\",  \r\n"
             		+ "  \"areaServed\": \"European union and beyond\",  \r\n"
             		+ "  \"dataProvider\": \"European open data portal\",  \r\n"
-            		+ "  \"dataServiceDescription\": [  \r\n"
+            		+ "  \"dataServiceDescupdateription\": [  \r\n"
             		+ "    \"Digital resources for accessing to the end points of the EU open data portal for solar system.\",  \r\n"
             		+ "    \"Recursos digitales para el acceso a los puntos de interaccion del portal europeo de datos abiertos del sistema solar.\"  \r\n"
             		+ "  ],  \r\n"
@@ -742,6 +743,28 @@ public List<Object> getAllDistributiondcatap() {
 		return dataset;
     }
 
+@RequestMapping(value = "/entity/{id}", method = RequestMethod.GET)
+@Operation(summary = "Get entity by id")
+public ResponseEntity<Object> getEntityById(@PathVariable("id") String entityId) {
+		String contextBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + entityId;
+		
+			  try {
+		            ResponseEntity<Object> response = restTemplate.getForEntity(contextBrokerEndpoint, Object.class);
+		            Object body = response.getBody();
+
+		            // Spring converte automaticamente l'oggetto in JSON
+		            return ResponseEntity.ok(body);
+
+		        } catch (HttpClientErrorException e) {
+		            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsString());
+		        } catch (ResourceAccessException e) {
+		            return ResponseEntity.status(503).body("Context Broker non raggiungibile");
+		        } catch (Exception e) {
+		            return ResponseEntity.status(500).body("Errore interno");
+		        }
+}
+
+
 @DeleteMapping("/dataset/{id}")
 public void deleteEntity(@PathVariable("id") String datasetId) {
     // Delete the dataset in this method with the id. 
@@ -776,11 +799,11 @@ public void deleteEntity(@PathVariable("id") String datasetId) {
 	}
 	
 }
-public void removeEmptyAndNullFields(Object object) {
+/*public void removeEmptyAndNullFields(Object object,  String entityId) {
     if (object instanceof JSONArray) {
         JSONArray array = (JSONArray) object;
         for (int i = 0; i < array.length(); ++i) 
-          removeEmptyAndNullFields(array.get(i));
+          removeEmptyAndNullFields(array.get(i), entityId);
     } else if (object instanceof JSONObject) {
         JSONObject json = (JSONObject) object;
         JSONArray names = json.names();
@@ -791,13 +814,74 @@ public void removeEmptyAndNullFields(Object object) {
             if (json.isNull(key) || ((JSONArray) json.get(key)).length() == 0) {
                 json.remove(key);
             } else {
-                removeEmptyAndNullFields(json.get(key));
+                removeEmptyAndNullFields(json.get(key), entityId);
             }}
            catch (Exception e){}
         
     }
     }
+}*/
+
+public void removeEmptyAndNullFields(Object object, String entityId) {
+	System.out.println(object.toString());
+    if (object instanceof JSONArray) {
+        JSONArray array = (JSONArray) object;
+        for (int i = 0; i < array.length(); ++i) {
+            removeEmptyAndNullFields(array.get(i), entityId);
+        }
+    } else if (object instanceof JSONObject) {
+        JSONObject json = (JSONObject) object;
+        JSONArray names = json.names();
+        if (names == null) return;
+
+        for (int i = 0; i < names.length(); ++i) {
+            String key = names.getString(i);
+            try {
+                Object value = json.get(key);
+
+                if (json.isNull(key)) {
+                    // Se è null, rimuovi la chiave
+                    json.remove(key);
+
+                    // Se è "spatial", esegui DELETE
+                    if ("spatial".equals(key)) {
+                    	System.out.println("sono qui");
+                        deleteSpatialAttribute(entityId);
+                    }
+
+                } else if (value instanceof JSONArray && ((JSONArray) value).length() == 0) {
+                    json.remove(key);
+
+                } else {
+                    // Ricorsione
+                    removeEmptyAndNullFields(value, entityId);
+                }
+
+            } catch (Exception e) {
+                // Gestione silenziosa degli errori
+            }
+        }
+    }
 }
+
+
+
+public void deleteSpatialAttribute(String entityId) {
+    try {
+    	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + entityId + "/attrs/spatial";
+    	HttpHeaders headers = new HttpHeaders();
+    	headers.setContentType(MediaType.APPLICATION_JSON);
+    	final HttpEntity<String> entity = new HttpEntity<String>( headers);
+    	restTemplate.delete(contexBrokerEndpoint);
+    
+    } catch (HttpClientErrorException e) {
+    	System.out.println(e.getMessage());
+    	// handle exception here
+    	//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
+    }
+}
+
+
 
 @RequestMapping(value = "/dataset/{id}", method = RequestMethod.PATCH, consumes="application/json")
 @Operation(summary = "Update the dataset into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
@@ -849,37 +933,72 @@ public void removeEmptyAndNullFields(Object object) {
         })))
 public String updateDataset(@PathVariable("id") String datasetId, @RequestBody JsonNode dataset ) {
 	//System.out.println(dataset);
-	Dataset datasetNgsi = new Dataset();
-	ObjectMapper map = new ObjectMapper();  
-	JsonNode node = null;
-	System.out.println(datasetId);
-	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
-	try {
-		try {
-			node = map.readTree(dataset.toString());
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		String entityString = datasetNgsi.convertToNgsi(node);
-		JSONObject jsonObj = new JSONObject(entityString);
-		this.removeEmptyAndNullFields(jsonObj);
-		jsonObj.remove("id");
-		jsonObj.remove("type");
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-	
-	System.out.println(jsonObj.toString());
-		final HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
-		System.out.println(contexBrokerEndpoint);
-		String response = restTemplate.patchForObject(contexBrokerEndpoint, entity, String.class);
-	     return response;
-	} catch (HttpClientErrorException e) {
-		System.out.println(e.getMessage());
-		// handle exception here
-		return e.getMessage();
-	
-	}
+	 Dataset datasetNgsi = new Dataset();
+	    ObjectMapper map = new ObjectMapper();  
+	    JsonNode node = null;
+	    System.out.println(datasetId);
+	    String contextBrokerAttrsEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
+	    String contextBrokerEntityEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId;
+
+	    try {
+	        try {
+	            node = map.readTree(dataset.toString());
+	        } catch (JsonProcessingException e) {
+	            e.printStackTrace();
+	        }
+
+	        String entityString = datasetNgsi.convertToNgsi(node);
+	        JSONObject jsonObj = new JSONObject(entityString);
+	        System.out.println("riga927" + jsonObj.toString());
+
+	        Object spatial = jsonObj.has("spatial") ? jsonObj.get("spatial") : null;
+	        if (spatial == null) {
+	            deleteSpatialAttribute(datasetId);
+	        }
+
+	        this.removeEmptyAndNullFields(jsonObj, datasetId);
+	        jsonObj.remove("id");
+	        jsonObj.remove("type");
+
+	        HttpHeaders headers = new HttpHeaders();
+	        headers.setContentType(MediaType.APPLICATION_JSON);
+	        HttpEntity<String> entity = new HttpEntity<>(jsonObj.toString(), headers);
+
+	        // PATCH update
+	        System.out.println(jsonObj.toString());
+	        System.out.println(contextBrokerAttrsEndpoint);
+	        String response = restTemplate.patchForObject(contextBrokerAttrsEndpoint, entity, String.class);
+
+	        // 🔍 Check if spatial is missing, then re-add it with POST
+	        if (spatial != null) {
+	            try {
+	                ResponseEntity<JsonNode> getResponse = restTemplate.getForEntity(contextBrokerEntityEndpoint, JsonNode.class);
+	                JsonNode entityJson = getResponse.getBody();
+
+	                if (entityJson != null && !entityJson.has("spatial")) {
+	                    // spatial is missing: recreate it
+	                    JSONObject spatialOnly = new JSONObject();
+	                    spatialOnly.put("spatial", spatial);
+
+	                    HttpHeaders postHeaders = new HttpHeaders();
+	                    postHeaders.setContentType(MediaType.APPLICATION_JSON);
+	                    HttpEntity<String> spatialEntity = new HttpEntity<>(spatialOnly.toString(), postHeaders);
+
+	                    String spatialEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
+	                    restTemplate.postForEntity(spatialEndpoint, spatialEntity, String.class);
+	                    System.out.println("✔ Attributo 'spatial' ricreato con POST.");
+	                }
+	            } catch (Exception e) {
+	                System.err.println("Errore durante il controllo o il ripristino di 'spatial': " + e.getMessage());
+	            }
+	        }
+
+	        return response;
+
+	    } catch (HttpClientErrorException e) {
+	        System.out.println(e.getMessage());
+	        return e.getMessage();
+	    }
 }
 
 
@@ -901,7 +1020,7 @@ public void deleteDistribution(@PathVariable("id") String distributionId) {
 			id = distributionId;
 			 }
 	} else {
-		id = "urn:ngsi-ld:DistributionDCAT-APa :id:" + distributionId; 
+		id = "urn:ngsi-ld:DistributionDCAT-AP:id:" + distributionId; 
 	}
 			
 	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + id;
@@ -920,7 +1039,7 @@ public void deleteDistribution(@PathVariable("id") String distributionId) {
 }
 
 
-@RequestMapping(value = "/distributiondcatap/{{id}}", method = RequestMethod.PATCH, consumes="application/json")
+@RequestMapping(value = "/distributiondcatap/{id}", method = RequestMethod.PATCH, consumes="application/json")
 @Operation(summary = "Update a distribution into CB", requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Request examples",
 content = @io.swagger.v3.oas.annotations.media.Content (examples = {
         @ExampleObject(value="{ \r\n"
@@ -954,7 +1073,7 @@ public String updateDistribution(@PathVariable("id") String distributionId, @Req
 		}
 		String entityString = distributionNgsi.convertToNgsi(node);
 		JSONObject jsonObj = new JSONObject(entityString);
-		this.removeEmptyAndNullFields(jsonObj);
+		this.removeEmptyAndNullFields(jsonObj,distributionId);
 		jsonObj.remove("id");
 		jsonObj.remove("type");
 		HttpHeaders headers = new HttpHeaders();
