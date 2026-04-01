@@ -1,4 +1,4 @@
-FROM openjdk:11.0.14-jdk-slim AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace/app
 
 COPY mvnw .
@@ -15,7 +15,7 @@ COPY src src
 RUN ./mvnw -f /workspace/app/pom.xml install
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
-FROM openjdk:11.0.14-jdk-slim
+FROM eclipse-temurin:17-jre
 VOLUME /tmp
 ARG DEPENDENCY=/workspace/app/target/dependency
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
