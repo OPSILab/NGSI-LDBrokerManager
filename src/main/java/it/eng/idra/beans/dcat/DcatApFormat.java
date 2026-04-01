@@ -16,9 +16,9 @@
 package it.eng.idra.beans.dcat;
 
 import javax.ws.rs.core.MediaType;
- 
+
 // TODO: Auto-generated Javadoc
-/**   
+/**
  * The Enum DcatApFormat.
  */
 public enum DcatApFormat {

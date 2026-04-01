@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 public class HomeController {
 
-	//@RequestMapping("/")  
+	@RequestMapping("/")  
 	@ResponseBody 
 	public String index() {
 		return "The NGSI-LD Broker Manager is running";

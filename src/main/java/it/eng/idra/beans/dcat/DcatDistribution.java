@@ -1,6 +1,6 @@
 /*******************************************************************************
  * Idra - Open Data Federation Platform
- * Copyright (C) 2021 Engineering Ingegneria Informatica S.p.A.
+ * Copyright (C) 2025 Engineering Ingegneria Informatica S.p.A.
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -14,29 +14,59 @@
  ******************************************************************************/
 
 package it.eng.idra.beans.dcat;
+
 import com.google.gson.annotations.SerializedName;
 import it.eng.idra.beans.DistributionAdditionalConfiguration;
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
 import it.eng.idra.utils.CommonUtil;
-import java.io.IOException;
+import it.eng.idra.utils.GsonUtil;
+import it.eng.idra.utils.GsonUtilException;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.CascadeType;
+import javax.persistence.CollectionTable;
+import javax.persistence.Column;
+import javax.persistence.ElementCollection;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinColumns;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.PrePersist;
+import javax.persistence.PreUpdate;
+import javax.persistence.Table;
+import javax.persistence.Transient;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.DCAT;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.RDFS;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonDeserialize;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.jena.vocabulary.SKOS;
+import org.apache.jena.vocabulary.XSD;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.eclipse.rdf4j.model.vocabulary.ODRL2;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
+import org.hibernate.annotations.Where;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -48,7 +78,11 @@ import org.json.JSONObject;
  */
 
 // @Embeddable
+@Table(name = "dcat_distribution")
+@Entity
 public class DcatDistribution implements Serializable {
+  // private static Logger logger = LogManager.getLogger(ClientApi.class);
+  private static Logger logger = LogManager.getLogger(DcatDistribution.class);
 
   /** The Constant serialVersionUID. */
   private static final long serialVersionUID = 1L;
@@ -61,18 +95,22 @@ public class DcatDistribution implements Serializable {
 
   /** The stored rdf. */
   @SerializedName(value = "storedRDF")
-  private boolean storedRDF;
+  @Column(name = "storedRDF")
+  private boolean storedRdf;
 
   /** The node id. */
   @SerializedName(value = "nodeID")
   // @Column(name = "nodeID")
-  private transient String nodeID;
+  private transient String nodeId;
 
   /**
    * Gets the id.
    *
    * @return the id
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
   public String getId() {
     return id;
   }
@@ -90,14 +128,13 @@ public class DcatDistribution implements Serializable {
   /** The access url. */
   // Mandatory
   @SerializedName(value = "accessURL")
-  private DcatProperty accessURL;
+  private DcatProperty accessUrl;
 
   /** The description. */
   // Recommended
   private DcatProperty description;
 
   /** The format. */
-  @JsonIgnore
   private DcatProperty format;
 
   /** The license. */
@@ -115,14 +152,12 @@ public class DcatDistribution implements Serializable {
 
   /** The download url. */
   @SerializedName(value = "downloadURL")
-  @JsonDeserialize()
-  private DcatProperty downloadURL;
+  private DcatProperty downloadUrl;
 
   /** The language. */
   private List<DcatProperty> language;
 
   /** The linked schemas. */
-  @JsonIgnore
   private List<DctStandard> linkedSchemas;
 
   /** The media type. */
@@ -143,12 +178,43 @@ public class DcatDistribution implements Serializable {
   /** The title. */
   private DcatProperty title;
 
+  /** The multilingual distribution details (title/description per language). */
+  private List<DcatDetails> distributionDetails;
+
   /** The has datalets. */
   // private List<Datalet> datalets;
   private boolean hasDatalets = false;
 
   /** The distribution additional config. */
   private DistributionAdditionalConfiguration distributionAdditionalConfig;
+
+  /** The identifier. */
+  private DcatProperty identifier;
+
+  // new
+  /** The access service. */
+  private List<DcatDataService> accessService;
+
+  /** The applicable legislation. */
+  private List<DcatProperty> applicableLegislation;
+
+  /** The availability. */
+  private DcatProperty availability;
+
+  /** The compression format. */
+  private DcatProperty compressionFormat;
+
+  /** The has policy. */
+  private DcatProperty hasPolicy;
+
+  /** The packaging format. */
+  private DcatProperty packagingFormat;
+
+  /** The spatial resolution. */
+  private DcatProperty spatialResolution;
+
+  /** The temporal resolution. */
+  private DcatProperty temporalResolution;
 
   /**
    * Instantiates a new dcat distribution.
@@ -159,48 +225,60 @@ public class DcatDistribution implements Serializable {
   /**
    * Instantiates a new dcat distribution.
    *
-   * @param nodeID the node ID
+   * @param nodeId the node ID
    */
   /*
    * DON'T TOUCH - CONSTRUCTOR USED BY WEB SCRAPER
    */
-  public DcatDistribution(String nodeID) {
-    this(nodeID, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-        null, null);
+  public DcatDistribution(String nodeId) {
+    this(nodeId, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null, null);
   }
 
   /**
    * Instantiates a new dcat distribution.
    *
-   * @param id            the id
-   * @param nodeID        the node ID
-   * @param accessURL     the access URL
-   * @param description   the description
-   * @param format        the format
-   * @param license       the license
-   * @param byteSize      the byte size
-   * @param checksum      the checksum
-   * @param documentation the documentation
-   * @param downloadURL   the download URL
-   * @param language      the language
-   * @param linkedSchemas the linked schemas
-   * @param mediaType     the media type
-   * @param releaseDate   the release date
-   * @param updateDate    the update date
-   * @param rights        the rights
-   * @param status        the status
-   * @param title         the title
-   * @param hasDatalets   the has datalets
+   * @param id                    the id
+   * @param nodeId                the node ID
+   * @param accessUrl             the access URL
+   * @param description           the description
+   * @param format                the format
+   * @param license               the license
+   * @param byteSize              the byte size
+   * @param checksum              the checksum
+   * @param documentation         the documentation
+   * @param downloadUrl           the download URL
+   * @param language              the language
+   * @param linkedSchemas         the linked schemas
+   * @param mediaType             the media type
+   * @param releaseDate           the release date
+   * @param updateDate            the update date
+   * @param rights                the rights
+   * @param status                the status
+   * @param title                 the title
+   * @param hasDatalets           the has datalets
+   * @param accessService         the access service
+   * @param applicableLegislation the applicable legislation
+   * @param availability          the availability
+   * @param compressionFormat     the compression format
+   * @param hasPolicy             the has policy
+   * @param packagingFormat       the packaging format
+   * @param spatialResolution     the spatial resolution
+   * @param temporalResolution    the temporal resolution
    */
-  public DcatDistribution(String id, String nodeID, String accessURL, String description,
+  public DcatDistribution(String id, String nodeId, String accessUrl, String description,
       String format, DctLicenseDocument license, String byteSize, SpdxChecksum checksum,
-      List<String> documentation, String downloadURL, List<String> language,
+      List<String> documentation, String downloadUrl, List<String> language,
       List<DctStandard> linkedSchemas, String mediaType, String releaseDate, String updateDate,
-      String rights, SkosConceptStatus status, String title, boolean hasDatalets) {
+      String rights, SkosConceptStatus status, String title, boolean hasDatalets,
+      List<DcatDataService> accessService, List<String> applicableLegislation,
+      String availability, String compressionFormat, String hasPolicy, String packagingFormat,
+      String spatialResolution, String temporalResolution) {
 
-    this(nodeID, accessURL, description, format, license, byteSize, checksum, documentation,
-        downloadURL, language, linkedSchemas, mediaType, releaseDate, updateDate, rights, status,
-        title);
+    this(nodeId, accessUrl, description, format, license, byteSize, checksum, documentation,
+        downloadUrl, language, linkedSchemas, mediaType, releaseDate, updateDate, rights, status,
+        title, accessService, applicableLegislation, availability, compressionFormat, hasPolicy,
+        packagingFormat, spatialResolution, temporalResolution);
     this.setId(id);
     this.setHasDatalets(hasDatalets);
     // setDatalets(datalets);
@@ -209,61 +287,93 @@ public class DcatDistribution implements Serializable {
   /**
    * Instantiates a new dcat distribution.
    *
-   * @param nodeID        the node ID
-   * @param accessURL     the access URL
-   * @param description   the description
-   * @param format        the format
-   * @param license       the license
-   * @param byteSize      the byte size
-   * @param checksum      the checksum
-   * @param documentation the documentation
-   * @param downloadURL   the download URL
-   * @param language      the language
-   * @param linkedSchemas the linked schemas
-   * @param mediaType     the media type
-   * @param releaseDate   the release date
-   * @param updateDate    the update date
-   * @param rights        the rights
-   * @param status        the status
-   * @param title         the title
+   * @param nodeId                the node ID
+   * @param accessUrl             the access URL
+   * @param description           the description
+   * @param format                the format
+   * @param license               the license
+   * @param byteSize              the byte size
+   * @param checksum              the checksum
+   * @param documentation         the documentation
+   * @param downloadUrl           the download URL
+   * @param language              the language
+   * @param linkedSchemas         the linked schemas
+   * @param mediaType             the media type
+   * @param releaseDate           the release date
+   * @param updateDate            the update date
+   * @param rights                the rights
+   * @param status                the status
+   * @param title                 the title
+   * @param accessService         the access service
+   * @param applicableLegislation the applicable legislation
+   * @param availability          the availability
+   * @param compressionFormat     the compression format
+   * @param hasPolicy             the has policy
+   * @param packagingFormat       the packaging format
+   * @param spatialResolution     the spatial resolution
+   * @param temporalResolution    the temporal resolution
    */
-  public DcatDistribution(String nodeID, String accessURL, String description, String format,
+  public DcatDistribution(String nodeId, String accessUrl, String description, String format,
       DctLicenseDocument license, String byteSize, SpdxChecksum checksum,
-      List<String> documentation, String downloadURL, List<String> language,
+      List<String> documentation, String downloadUrl, List<String> language,
       List<DctStandard> linkedSchemas, String mediaType, String releaseDate, String updateDate,
-      String rights, SkosConceptStatus status, String title) {
+      String rights, SkosConceptStatus status, String title, List<DcatDataService> accessService,
+      List<String> applicableLegislation, String availability, String compressionFormat,
+      String hasPolicy, String packagingFormat, String spatialResolution,
+      String temporalResolution) {
     super();
-    setNodeID(nodeID);
-    setAccessURL2(new DcatProperty(DCAT.accessURL, RDFS.Resource, accessURL));
-    setDescription2(new DcatProperty(DCTerms.description, RDFS.Literal, description));
-    setDownloadURL2(new DcatProperty(DCAT.downloadURL, RDFS.Resource, downloadURL));
-    setFormat2(new DcatProperty(DCTerms.format, DCTerms.MediaTypeOrExtent, format));
+    setNodeId(nodeId);
+    setAccessUrl(new DcatProperty(DCAT.accessURL, RDFS.Resource, accessUrl));
+    setDescription(new DcatProperty(DCTerms.description, RDFS.Literal, description));
+    setDownloadUrl(new DcatProperty(DCAT.downloadURL, RDFS.Resource, downloadUrl));
+    setFormat(new DcatProperty(DCTerms.format, DCTerms.MediaTypeOrExtent, format));
     // setLicense(license != null ? license : new
     // DCTLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeID));
-    setLicense2(license);
-    setByteSize2(new DcatProperty(DCAT.byteSize, RDFS.Literal, byteSize));
+    setLicense(license);
+    setByteSize(new DcatProperty(DCAT.byteSize, RDFS.Literal, byteSize));
     // setChecksum(
     // checksum != null ? checksum : new
     // SPDXChecksum("http://spdx.org/rdf/terms#checksum", "", "", nodeID));
-    setChecksum2(checksum);
-    setDocumentation2(documentation != null
+    setChecksum(checksum);
+    setDocumentation(documentation != null
         ? documentation.stream().map(item -> new DcatProperty(FOAF.page, FOAF.Document, item))
             .collect(Collectors.toList())
         : Arrays.asList(new DcatProperty(FOAF.page, FOAF.Document, "")));
-    setLanguage2(language != null
+    setLanguage(language != null
         ? language.stream()
             .map(item -> new DcatProperty(DCTerms.language, DCTerms.LinguisticSystem, item))
             .collect(Collectors.toList())
         : Arrays.asList(new DcatProperty(DCTerms.language, DCTerms.LinguisticSystem, "")));
     setLinkedSchemas(linkedSchemas);
-    setMediaType2(new DcatProperty(DCAT.mediaType, DCTerms.MediaType, mediaType));
-    setReleaseDate2(new DcatProperty(DCTerms.issued, RDFS.Literal,
+    setMediaType(new DcatProperty(DCAT.mediaType, DCTerms.MediaType, mediaType));
+    setReleaseDate(new DcatProperty(DCTerms.issued, RDFS.Literal,
         StringUtils.isNotBlank(releaseDate) ? releaseDate : ""));
-    setUpdateDate2(new DcatProperty(DCTerms.modified, RDFS.Literal,
+    setUpdateDate(new DcatProperty(DCTerms.modified, RDFS.Literal,
         StringUtils.isNotBlank(updateDate) ? updateDate : ""));
-    setRights2(new DcatProperty(DCTerms.rights, DCTerms.RightsStatement, rights));
-    setStatus2(status);
-    setTitle2(new DcatProperty(DCTerms.title, RDFS.Literal, title));
+    setRights(new DcatProperty(DCTerms.rights, DCTerms.RightsStatement, rights));
+    setStatus(status);
+    setTitle(new DcatProperty(DCTerms.title, RDFS.Literal, title));
+
+    // **New Fields Mapping**
+    setAccessService(accessService);
+    /*
+     * logger.info(
+     * "applicableLegislation size: " +
+     * (applicableLegislation != null && !applicableLegislation.isEmpty() ?
+     * applicableLegislation.size() : null));
+     */
+    setApplicableLegislation(applicableLegislation != null && !applicableLegislation.isEmpty()
+        ? applicableLegislation.stream()
+            .map(item -> new DcatProperty(DCATAP.applicableLegislation, ELI.LegalResource, item))
+            .collect(Collectors.toList())
+        : Arrays.asList(new DcatProperty(DCATAP.applicableLegislation, ELI.LegalResource, "")));
+    setAvailability(new DcatProperty(DCATAP.availability, SKOS.Concept, availability));
+    setCompressionFormat(new DcatProperty(DCAT.compressFormat, DCTerms.MediaType, compressionFormat));
+    setHasPolicy(
+        new DcatProperty(ResourceFactory.createProperty("https://www.w3.org/ns/odrl/2/"), DCTerms.Policy, hasPolicy));
+    setPackagingFormat(new DcatProperty(DCAT.packageFormat, DCTerms.MediaType, packagingFormat));
+    setSpatialResolution(new DcatProperty(DCAT.spatialResolutionInMeters, XSD.decimal, spatialResolution));
+    setTemporalResolution(new DcatProperty(DCAT.temporalResolution, XSD.duration, temporalResolution));
   }
 
   /**
@@ -271,6 +381,7 @@ public class DcatDistribution implements Serializable {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }
@@ -280,8 +391,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the node id
    */
+  @Column(name = "nodeID")
   public String getNodeId() {
-    return nodeID;
+    return nodeId;
   }
 
   /**
@@ -289,8 +401,38 @@ public class DcatDistribution implements Serializable {
    *
    * @param nodeId the new node id
    */
-  public void setNodeID(String nodeId) {
-    this.nodeID = nodeId;
+  public void setNodeId(String nodeId) {
+    this.nodeId = nodeId;
+  }
+
+  /**
+   * Gets the identifier.
+   *
+   * @return the identifier
+   */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "identifier")) })
+  public DcatProperty getIdentifier() {
+    return identifier;
+  }
+
+  /**
+   * Sets the identifier.
+   *
+   * @param dcatIdentifier the new identifier
+   */
+  public void setIdentifier(DcatProperty dcatIdentifier) {
+    this.identifier = dcatIdentifier;
+  }
+
+  /**
+   * Sets the identifier.
+   *
+   * @param dcatIdentifier the new identifier
+   */
+  @JsonIgnore
+  public void setIdentifier(String dcatIdentifier) {
+    setIdentifier(new DcatProperty(DCTerms.identifier, RDFS.Literal, dcatIdentifier));
   }
 
   /**
@@ -298,8 +440,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the stored rdf
    */
-  public boolean getStoredRDF() {
-    return storedRDF;
+  public boolean getStoredRdf() {
+    return storedRdf;
   }
 
   /**
@@ -307,8 +449,8 @@ public class DcatDistribution implements Serializable {
    *
    * @param storedRdf the new stored rdf
    */
-  public void setStoredRDF(boolean storedRdf) {
-    this.storedRDF = storedRdf;
+  public void setStoredRdf(boolean storedRdf) {
+    this.storedRdf = storedRdf;
   }
 
   /**
@@ -316,6 +458,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the title
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "title", columnDefinition = "LONGTEXT")) })
   public DcatProperty getTitle() {
     return title;
   }
@@ -325,7 +470,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param title the new title
    */
-  public void setTitle2(DcatProperty title) {
+  public void setTitle(DcatProperty title) {
     this.title = title;
   }
 
@@ -334,8 +479,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param title the new title
    */
+  @JsonIgnore
   public void setTitle(String title) {
-    setTitle2(new DcatProperty(DCTerms.title, RDFS.Literal, title));
+    setTitle(new DcatProperty(DCTerms.title, RDFS.Literal, title));
   }
 
   /**
@@ -343,8 +489,11 @@ public class DcatDistribution implements Serializable {
    *
    * @return the access url
    */
-  public DcatProperty getAccessURL() {
-    return accessURL;
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "accessURL", length = 65535, columnDefinition = "Text")) })
+  public DcatProperty getAccessUrl() {
+    return accessUrl;
   }
 
   /**
@@ -352,8 +501,8 @@ public class DcatDistribution implements Serializable {
    *
    * @param accessUrl the new access url
    */
-  public void setAccessURL2(DcatProperty accessUrl) {
-    this.accessURL = accessUrl;
+  public void setAccessUrl(DcatProperty accessUrl) {
+    this.accessUrl = accessUrl;
   }
 
   /**
@@ -361,8 +510,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param accessUrl the new access url
    */
-  public void setAccessURL(String accessUrl) {
-    setAccessURL2(new DcatProperty(DCAT.accessURL, RDFS.Resource, accessUrl));
+  @JsonIgnore
+  public void setAccessUrl(String accessUrl) {
+    setAccessUrl(new DcatProperty(DCAT.accessURL, RDFS.Resource, accessUrl));
   }
 
   /**
@@ -370,6 +520,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the description
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "description", columnDefinition = "LONGTEXT")) })
   public DcatProperty getDescription() {
     return description;
   }
@@ -379,7 +532,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param description the new description
    */
-  public void setDescription2(DcatProperty description) {
+  public void setDescription(DcatProperty description) {
     this.description = description;
   }
 
@@ -388,8 +541,31 @@ public class DcatDistribution implements Serializable {
    *
    * @param description the new description
    */
+  @JsonIgnore
   public void setDescription(String description) {
-    setDescription2(new DcatProperty(DCTerms.description, RDFS.Literal, description));
+    setDescription(new DcatProperty(DCTerms.description, RDFS.Literal, description));
+  }
+
+  /**
+   * Gets the multilingual distribution details.
+   *
+   * @return distribution details
+   */
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @OneToMany(cascade = { CascadeType.ALL }, orphanRemoval = true)
+  @JoinColumn(name = "distribution_id", referencedColumnName = "id")
+  @Where(clause = "dataset_id IS NULL AND dataset_series_id IS NULL AND catalogue_record_id IS NULL")
+  public List<DcatDetails> getDistributionDetails() {
+    return distributionDetails;
+  }
+
+  /**
+   * Sets multilingual distribution details.
+   *
+   * @param distributionDetails distribution details
+   */
+  public void setDistributionDetails(List<DcatDetails> distributionDetails) {
+    this.distributionDetails = distributionDetails;
   }
 
   /**
@@ -397,6 +573,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the media type
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "mediaType")) })
   public DcatProperty getMediaType() {
     return mediaType;
   }
@@ -406,7 +584,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param mediaType the new media type
    */
-  public void setMediaType2(DcatProperty mediaType) {
+  public void setMediaType(DcatProperty mediaType) {
     this.mediaType = mediaType;
   }
 
@@ -415,8 +593,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param mediaType the new media type
    */
+  @JsonIgnore
   public void setMediaType(String mediaType) {
-    setMediaType2(new DcatProperty(DCAT.mediaType, DCTerms.MediaType, mediaType));
+    setMediaType(new DcatProperty(DCAT.mediaType, DCTerms.MediaType, mediaType));
   }
 
   /**
@@ -424,7 +603,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the format
    */
-  @JsonIgnore
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "format")) })
   public DcatProperty getFormat() {
     return format;
   }
@@ -435,10 +615,9 @@ public class DcatDistribution implements Serializable {
    * @param format the format
    * @return the dcat distribution
    */
-  @JsonIgnore
-  public DcatDistribution setFormat2(DcatProperty format) {
+  public DcatDistribution setFormat(DcatProperty format) {
     if (StringUtils.isBlank(format.getValue())) {
-      format.setValue(CommonUtil.extractFormatFromFileExtension(this.getDownloadURL().getValue()));
+      format.setValue(CommonUtil.extractFormatFromFileExtension(this.getDownloadUrl().getValue()));
     }
     this.format = format;
     return this;
@@ -453,9 +632,9 @@ public class DcatDistribution implements Serializable {
   @JsonIgnore
   public DcatDistribution setFormat(String format) {
     if (StringUtils.isBlank(format)) {
-      format = CommonUtil.extractFormatFromFileExtension(this.getDownloadURL().getValue());
+      format = CommonUtil.extractFormatFromFileExtension(this.getDownloadUrl().getValue());
     }
-    return setFormat2(new DcatProperty(DCTerms.format, DCTerms.MediaTypeOrExtent, format));
+    return setFormat(new DcatProperty(DCTerms.format, DCTerms.MediaTypeOrExtent, format));
   }
 
   /**
@@ -463,6 +642,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the license
    */
+  @OneToOne(cascade = CascadeType.ALL)
+  @JoinColumn(name = "licenseDocument_id")
   public DctLicenseDocument getLicense() {
     return license;
   }
@@ -472,23 +653,16 @@ public class DcatDistribution implements Serializable {
    *
    * @param license the new license
    */
-  public void setLicense2(DctLicenseDocument license) {
+  public void setLicense(DctLicenseDocument license) {
     this.license = (license != null) ? license
-        : new DctLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeID);
+        : new DctLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeId);
   }
 
-  // setLicense(license != null ? license : new
-  // DCTLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeID));
-  
-  protected void setLicense(JsonNode license) throws JsonParseException, JsonMappingException, IOException {
-	 
-      ObjectMapper objectMapper = new ObjectMapper();
-      //String uri = objectMapper.readValue(license.get("uri"), String.class);
-      String name = objectMapper.readValue(license.get("name"), String.class);
-      String type = objectMapper.readValue(license.get("type"), String.class);
-      String versionInfo = objectMapper.readValue(license.get("versionInfo"), String.class);
-      setLicense2(new DctLicenseDocument(DCTerms.license.getURI(), name, type, versionInfo, nodeID));
- }
+  // public void setLicense(String license) {
+  // setLicense(license != null ? new DCTLicenseDocument(DCTerms.license.getURI(),
+  // license, "", "", nodeID)
+  // : new DCTLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeID));
+  // }
 
   /**
    * Sets the license uri.
@@ -497,7 +671,7 @@ public class DcatDistribution implements Serializable {
    */
   public void setLicense_uri(String uri) {
     if (license == null) {
-      setLicense2(null);
+      setLicense(null);
     }
     if (StringUtils.isNotBlank(uri)) {
       license.setUri(uri);
@@ -511,7 +685,7 @@ public class DcatDistribution implements Serializable {
    */
   public void setLicense_name(String name) {
     if (license == null) {
-      setLicense2(null);
+      setLicense(null);
     }
     if (StringUtils.isNotBlank(name)) {
       license.setName(name);
@@ -525,7 +699,7 @@ public class DcatDistribution implements Serializable {
    */
   public void setLicense_type(String type) {
     if (license == null) {
-      setLicense2(null);
+      setLicense(null);
     }
     if (StringUtils.isNotBlank(type)) {
       license.setType(type);
@@ -539,7 +713,7 @@ public class DcatDistribution implements Serializable {
    */
   public void setLicense_versionInfo(String versionInfo) {
     if (license == null) {
-      setLicense2(null);
+      setLicense(null);
     }
     if (StringUtils.isNotBlank(versionInfo)) {
       license.setVersionInfo(versionInfo);
@@ -551,6 +725,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the byte size
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "byteSize")) })
   public DcatProperty getByteSize() {
     return byteSize;
   }
@@ -560,7 +736,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param byteSize the new byte size
    */
-  public void setByteSize2(DcatProperty byteSize) {
+  public void setByteSize(DcatProperty byteSize) {
     this.byteSize = byteSize;
   }
 
@@ -569,8 +745,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param byteSize the new byte size
    */
+  @JsonIgnore
   public void setByteSize(String byteSize) {
-    setByteSize2(new DcatProperty(DCAT.byteSize, RDFS.Literal, byteSize));
+    setByteSize(new DcatProperty(DCAT.byteSize, RDFS.Literal, byteSize));
   }
 
   /**
@@ -578,6 +755,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the release date
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "releaseDate", columnDefinition = "varchar(255) default '1970-01-01T00:00:00Z'")) })
   public DcatProperty getReleaseDate() {
     return releaseDate;
   }
@@ -587,7 +767,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param releaseDate the new release date
    */
-  public void setReleaseDate2(DcatProperty releaseDate) {
+  public void setReleaseDate(DcatProperty releaseDate) {
     this.releaseDate = releaseDate;
   }
 
@@ -596,8 +776,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param releaseDate the new release date
    */
+  @JsonIgnore
   public void setReleaseDate(String releaseDate) {
-    setReleaseDate2(new DcatProperty(DCTerms.issued, RDFS.Literal, releaseDate));
+    setReleaseDate(new DcatProperty(DCTerms.issued, RDFS.Literal, releaseDate));
   }
 
   /**
@@ -605,6 +786,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the update date
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "updateDate", columnDefinition = "varchar(255) default '1970-01-01T00:00:00Z'")) })
   public DcatProperty getUpdateDate() {
     return updateDate;
   }
@@ -614,7 +798,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param updateDate the new update date
    */
-  public void setUpdateDate2(DcatProperty updateDate) {
+  public void setUpdateDate(DcatProperty updateDate) {
     this.updateDate = updateDate;
   }
 
@@ -623,8 +807,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param updateDate the new update date
    */
+  @JsonIgnore
   public void setUpdateDate(String updateDate) {
-    setUpdateDate2(new DcatProperty(DCTerms.modified, RDFS.Literal, updateDate));
+    setUpdateDate(new DcatProperty(DCTerms.modified, RDFS.Literal, updateDate));
   }
 
   // @AttributeOverrides({ @AttributeOverride(name = "value", column =
@@ -638,6 +823,13 @@ public class DcatDistribution implements Serializable {
    *
    * @return the documentation
    */
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @ElementCollection
+  @CollectionTable(name = "dcat_distribution_documentation", joinColumns = {
+      @JoinColumn(name = "distribution_id", referencedColumnName = "id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "documentation", columnDefinition = "LONGTEXT")) })
   public List<DcatProperty> getDocumentation() {
     return documentation;
   }
@@ -647,7 +839,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param documentation the new documentation
    */
-  public void setDocumentation2(List<DcatProperty> documentation) {
+  public void setDocumentation(List<DcatProperty> documentation) {
     this.documentation = documentation;
   }
 
@@ -656,11 +848,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param documentation the new documentation
    */
-  public void setDocumentation(List<String> documentation) {
-	    setDocumentation2(documentation != null
-	            ? documentation.stream().map(item -> new DcatProperty(FOAF.page, FOAF.Document, item))
-	                .collect(Collectors.toList())
-	            : Arrays.asList(new DcatProperty(FOAF.page, FOAF.Document, "")));
+  @JsonIgnore
+  public void setDocumentation(String documentation) {
+    setDocumentation(Arrays.asList(new DcatProperty(FOAF.page, FOAF.Document, documentation)));
   }
 
   /**
@@ -668,8 +858,11 @@ public class DcatDistribution implements Serializable {
    *
    * @return the download url
    */
-  public DcatProperty getDownloadURL() {
-    return downloadURL;
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "downloadURL", length = 65535, columnDefinition = "Text")) })
+  public DcatProperty getDownloadUrl() {
+    return downloadUrl;
   }
 
   /**
@@ -677,8 +870,8 @@ public class DcatDistribution implements Serializable {
    *
    * @param downloadUrl the new download url
    */
-  public void setDownloadURL2(DcatProperty downloadUrl) {
-    this.downloadURL = downloadUrl;
+  public void setDownloadUrl(DcatProperty downloadUrl) {
+    this.downloadUrl = downloadUrl;
   }
 
   /**
@@ -686,8 +879,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param downloadUrl the new download url
    */
-  public void setDownloadURL(String downloadUrl) {
-    setDownloadURL2(new DcatProperty(DCAT.downloadURL, RDFS.Resource, downloadUrl));
+  @JsonIgnore
+  public void setDownloadUrl(String downloadUrl) {
+    setDownloadUrl(new DcatProperty(DCAT.downloadURL, RDFS.Resource, downloadUrl));
   }
 
   /**
@@ -695,6 +889,12 @@ public class DcatDistribution implements Serializable {
    *
    * @return the language
    */
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @ElementCollection
+  @CollectionTable(name = "dcat_distribution_language", joinColumns = {
+      @JoinColumn(name = "distribution_id", referencedColumnName = "id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "language")) })
   public List<DcatProperty> getLanguage() {
     return language;
   }
@@ -704,7 +904,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param language the new language
    */
-  public void setLanguage2(List<DcatProperty> language) {
+  public void setLanguage(List<DcatProperty> language) {
     this.language = language;
   }
 
@@ -713,14 +913,10 @@ public class DcatDistribution implements Serializable {
    *
    * @param language the new language
    */
-  public void setLanguage(List<String> language) {
-	    setLanguage2(language != null
-	            ? language.stream()
-	                .map(item -> new DcatProperty(DCTerms.language, DCTerms.LinguisticSystem, item))
-	                .collect(Collectors.toList())
-	            : Arrays.asList(new DcatProperty(DCTerms.language, DCTerms.LinguisticSystem, "")));
-	  
-
+  @JsonIgnore
+  public void setLanguage(String language) {
+    setLanguage(
+        Arrays.asList(new DcatProperty(DCTerms.language, DCTerms.LinguisticSystem, language)));
   }
 
   /**
@@ -728,7 +924,11 @@ public class DcatDistribution implements Serializable {
    *
    * @return the linked schemas
    */
-  @JsonIgnore
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @OneToMany(cascade = { CascadeType.ALL })
+  // @Fetch(FetchMode.SELECT)
+  @JoinColumns({ @JoinColumn(name = "distribution_id", referencedColumnName = "id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
   public List<DctStandard> getLinkedSchemas() {
     return linkedSchemas;
   }
@@ -738,7 +938,6 @@ public class DcatDistribution implements Serializable {
    *
    * @param linkedSchemas the new linked schemas
    */
-  @JsonIgnore
   public void setLinkedSchemas(List<DctStandard> linkedSchemas) {
     this.linkedSchemas = linkedSchemas;
   }
@@ -748,6 +947,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the rights
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "rights")) })
   public DcatProperty getRights() {
     return rights;
   }
@@ -757,7 +958,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param rights the new rights
    */
-  public void setRights2(DcatProperty rights) {
+  public void setRights(DcatProperty rights) {
     this.rights = rights;
   }
 
@@ -766,8 +967,9 @@ public class DcatDistribution implements Serializable {
    *
    * @param rights the new rights
    */
+  @JsonIgnore
   public void setRights(String rights) {
-    setRights2(new DcatProperty(DCTerms.rights, DCTerms.RightsStatement, rights));
+    setRights(new DcatProperty(DCTerms.rights, DCTerms.RightsStatement, rights));
   }
 
   /**
@@ -775,6 +977,9 @@ public class DcatDistribution implements Serializable {
    *
    * @return the status
    */
+  @OneToOne(cascade = CascadeType.ALL)
+  @JoinColumns({ @JoinColumn(name = "status_id", referencedColumnName = "concept_id") })
+  @Where(clause = "type='3'")
   public SkosConceptStatus getStatus() {
     return status;
   }
@@ -784,7 +989,7 @@ public class DcatDistribution implements Serializable {
    *
    * @param status the new status
    */
-  public void setStatus2(SkosConceptStatus status) {
+  public void setStatus(SkosConceptStatus status) {
     this.status = status;
   }
 
@@ -793,9 +998,10 @@ public class DcatDistribution implements Serializable {
    *
    * @param status the new status
    */
+  @JsonIgnore
   public void setStatus(String status) {
-    setStatus2(new SkosConceptStatus("http://www.w3.org/ns/adms#status", "",
-        Arrays.asList(new SkosPrefLabel("", status, nodeID)), nodeID));
+    setStatus(new SkosConceptStatus("http://www.w3.org/ns/adms#status", "",
+        Arrays.asList(new SkosPrefLabel("", status, nodeId)), nodeId));
   }
 
   /**
@@ -803,37 +1009,31 @@ public class DcatDistribution implements Serializable {
    *
    * @return the checksum
    */
+  @OneToOne(cascade = CascadeType.ALL)
+  @JoinColumn(name = "checksum_id")
   public SpdxChecksum getChecksum() {
     return checksum;
   }
 
-
-  
   /**
    * Sets the checksum.
    *
    * @param checksum the new checksum
    */
-  public void setChecksum2(SpdxChecksum checksum) {
-	  this.checksum = checksum;
-  }
-  
-  // PROBLEMA: gli arriva un array con uri, algorithm, checksumValue
-  public void setChecksum(JsonNode checksum) throws JsonParseException, JsonMappingException, IOException {
-	 
-      ObjectMapper objectMapper = new ObjectMapper();
-      //String uri = objectMapper.readValue(checksum.get("uri"), String.class);
-      String algorithm = objectMapper.readValue(checksum.get("algorithm"), String.class);
-      String checksumValue = objectMapper.readValue(checksum.get("checksumValue"), String.class);
-	  this.checksum = new SpdxChecksum("http://spdx.org/rdf/terms#checksum", algorithm,
-			  checksumValue, nodeID);
+  public void setChecksum(SpdxChecksum checksum) {
+    this.checksum = checksum;
   }
 
-  // setChecksum(
-  // checksum != null ? checksum : new
-  // SPDXChecksum("http://spdx.org/rdf/terms#checksum", "", "", nodeID));
- 
-
+  /**
+   * Sets the checksum.
+   *
+   * @param checksum the new checksum
+   */
+  @JsonIgnore
+  public void setChecksum(String checksum) {
+    setChecksum(new SpdxChecksum("http://spdx.org/rdf/terms#checksum", "checksumAlgorithm_sha1",
+        checksum, nodeId));
+  }
 
   /**
    * Checks if is checks for datalets.
@@ -858,6 +1058,8 @@ public class DcatDistribution implements Serializable {
    *
    * @return the distribution additional config
    */
+  @OneToOne(orphanRemoval = true, cascade = { CascadeType.ALL, CascadeType.REMOVE })
+  @JoinColumn(name = "distribution_additionalconfig_id")
   public DistributionAdditionalConfiguration getDistributionAdditionalConfig() {
     return distributionAdditionalConfig;
   }
@@ -907,12 +1109,176 @@ public class DcatDistribution implements Serializable {
   // this.datalets.add(datalet);
   //
   // }
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @OneToMany(cascade = { CascadeType.ALL })
+  // @Fetch(FetchMode.SELECT)
+  @JoinColumns({ @JoinColumn(name = "distribution_id", referencedColumnName = "id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
+  public List<DcatDataService> getAccessService() {
+    return accessService;
+  }
+
+  public void setAccessService(List<DcatDataService> accessService) {
+    this.accessService = accessService;
+  }
+
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @ElementCollection
+  @CollectionTable(name = "dcat_distribution_applicable_legislation", joinColumns = {
+      @JoinColumn(name = "distribution_id", referencedColumnName = "id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "applicableLegislation")) })
+  public List<DcatProperty> getApplicableLegislation() {
+    return applicableLegislation;
+  }
+
+  public void setApplicableLegislation(List<DcatProperty> applicableLegislation) {
+    this.applicableLegislation = applicableLegislation;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "availability")) })
+  public DcatProperty getAvailability() {
+    return availability;
+  }
+
+  public void setAvailability(DcatProperty availability) {
+    this.availability = availability;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "compressionFormat")) })
+  public DcatProperty getCompressionFormat() {
+    return compressionFormat;
+  }
+
+  public void setCompressionFormat(DcatProperty compressionFormat) {
+    this.compressionFormat = compressionFormat;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "hasPolicy")) })
+  public DcatProperty getHasPolicy() {
+    return hasPolicy;
+  }
+
+  public void setHasPolicy(DcatProperty hasPolicy) {
+    this.hasPolicy = hasPolicy;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "packagingFormat")) })
+  public DcatProperty getPackagingFormat() {
+    return packagingFormat;
+  }
+
+  public void setPackagingFormat(DcatProperty packagingFormat) {
+    this.packagingFormat = packagingFormat;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "spatialResolution")) })
+  public DcatProperty getSpatialResolution() {
+    return spatialResolution;
+  }
+
+  public void setSpatialResolution(DcatProperty spatialResolution) {
+    this.spatialResolution = spatialResolution;
+  }
+
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "temporalResolution")) })
+  public DcatProperty getTemporalResolution() {
+    return temporalResolution;
+  }
+
+  public void setTemporalResolution(DcatProperty temporalResolution) {
+    this.temporalResolution = temporalResolution;
+  }
+
+  @PrePersist
+  @PreUpdate
+  protected void normalizeDistributionDetails() {
+    Map<String, DcatDetails> deduplicated = new LinkedHashMap<>();
+
+    if (distributionDetails != null) {
+      for (DcatDetails detail : distributionDetails) {
+        if (detail == null) {
+          continue;
+        }
+
+        if (StringUtils.isNotBlank(getId())) {
+          detail.setDistributionId(getId());
+        }
+        detail.setNodeId(getNodeId());
+        detail.setDatasetId(null);
+        detail.setCatalogueRecordId(null);
+        detail.setDatasetSeriesId(null);
+
+        String language = normalizeLanguageValue(detail.getLanguage());
+        String titleValue = normalizeTextValue(detail.getTitle());
+        String descriptionValue = normalizeTextValue(detail.getDescription());
+
+        detail.setLanguage(language);
+        detail.setTitle(titleValue);
+        detail.setDescription(descriptionValue);
+
+        if (titleValue == null && descriptionValue == null) {
+          continue;
+        }
+
+        String key = (language == null ? "" : language) + "|" + (titleValue == null ? "" : titleValue)
+            + "|" + (descriptionValue == null ? "" : descriptionValue);
+        deduplicated.putIfAbsent(key, detail);
+      }
+    }
+
+    if (deduplicated.isEmpty()) {
+      String titleValue = title != null ? normalizeTextValue(title.getValue()) : null;
+      String descriptionValue = description != null ? normalizeTextValue(description.getValue()) : null;
+      if (titleValue != null || descriptionValue != null) {
+        DcatDetails fallback = new DcatDetails(null, null, null, null, getNodeId(),
+            descriptionValue, titleValue, null);
+        if (StringUtils.isNotBlank(getId())) {
+          fallback.setDistributionId(getId());
+        }
+        deduplicated.put("fallback", fallback);
+      }
+    }
+
+    distributionDetails = new ArrayList<>(deduplicated.values());
+  }
+
+  private static String normalizeTextValue(String value) {
+    return StringUtils.trimToNull(value);
+  }
+
+  private static String normalizeLanguageValue(String language) {
+    String normalized = StringUtils.trimToNull(language);
+    if (normalized == null) {
+      return null;
+    }
+    return normalized.replace('_', '-').toLowerCase();
+  }
+
+  private static String extractDocFieldString(SolrDocument doc, String fieldName) {
+    if (doc == null || StringUtils.isBlank(fieldName) || doc.getFieldValue(fieldName) == null) {
+      return null;
+    }
+    Object value = doc.getFieldValue(fieldName);
+    if (value instanceof List && !((List<?>) value).isEmpty()) {
+      Object first = ((List<?>) value).get(0);
+      return first != null ? first.toString() : null;
+    }
+    return value.toString();
+  }
 
   /**
    * Checks if is rdf.
    *
    * @return true, if is rdf
    */
+  @Transient
   public boolean isRdf() {
     return ((this.format != null && (this.format.getValue().equals("RDF")
         || this.format.getValue().equals("application/rdf+xml")))
@@ -927,230 +1293,465 @@ public class DcatDistribution implements Serializable {
    *
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc() {
-//
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", id);
-//    //doc.addField("content_type", CacheContentType.distribution.toString());
-//    doc.addField("nodeID", nodeId);
-//    doc.addField("storedRDF", storedRdf);
-//    String descTmp = description != null ? description.getValue() : "";
-//    try {
-//      while (descTmp.getBytes("UTF-8").length >= 32766) {
-//        descTmp = descTmp.substring(0, (int) Math.ceil(descTmp.length() * (0.9))).trim();
-//      }
-//      this.description.setValue(descTmp);
-//    } catch (UnsupportedEncodingException e) {
-//      e.printStackTrace();
-//    }
-//
-//    doc.addField("accessURL", accessUrl.getValue());
-//    doc.addField("description", description.getValue());
-//    doc.addField("format", format.getValue());
-//
-//    // if (license != null)
-//    // doc.addChildDocument(license.toDoc(CacheContentType.licenseDocument));
-//
-//    if (license != null) {
-//      try {
-//        doc.addField("license", GsonUtil.obj2Json(license, GsonUtil.licenseType));
-//      } catch (GsonUtilException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//    // if (license != null)
-//    // doc.addChildDocument(license.toDoc(CacheContentType.licenseDocument));
-//    if (byteSize != null) {
-//      doc.addField("byteSize", byteSize.getValue());
-//    }
-//
-//    if (checksum != null) {
-//      try {
-//        doc.addField("checksum", GsonUtil.obj2Json(checksum, GsonUtil.checksumType));
-//        // doc.addField("checksum",checksum.toDoc(CacheContentType.checksum));
-//      } catch (GsonUtilException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//
-//    // if (datalets != null && !datalets.isEmpty()) {
-//    // try {
-//    // for (Datalet datalet : datalets)
-//    // doc.addField("datalets", GsonUtil.obj2Json(datalet, GsonUtil.dataletType));
-//    // } catch (GsonUtilException e) {
-//    // e.printStackTrace();
-//    // }
-//    // }
-//
-//    doc.addField("hasDatalets", hasDatalets);
-//
-//    // doc.addField("documentation", documentation.getValue());
-//    doc.addField("downloadURL", downloadUrl.getValue());
-//    // doc.addField("language", language.getValue());
-//
-//    if (documentation != null && !documentation.isEmpty()) {
-//      doc.addField("documentation", documentation.stream().filter(item -> item != null)
-//          .map(item -> item.getValue()).collect(Collectors.toList()));
-//    }
-//    if (language != null && !language.isEmpty()) {
-//      doc.addField("language", language.stream().filter(item -> item != null)
-//          .map(item -> item.getValue()).collect(Collectors.toList()));
-//    }
-//
-//    if (linkedSchemas != null && !linkedSchemas.isEmpty()) {
-//      try {
-//        doc.addField("linkedSchemas", GsonUtil.obj2Json(linkedSchemas, GsonUtil.stdListType));
-//      } catch (GsonUtilException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//    // if (linkedSchemas != null && !linkedSchemas.isEmpty())
-//    // linkedSchemas.stream().filter(item -> item != null)
-//    // .forEach(item ->
-//    // doc.addChildDocument(item.toDoc(CacheContentType.linkedSchemas)));
-//    if (mediaType != null) {
-//      doc.addField("mediaType", mediaType.getValue());
-//    }
-//
-//    if (releaseDate != null && StringUtils.isNotBlank(releaseDate.getValue())) {
-//      doc.addField("releaseDate", releaseDate.getValue());
-//    }
-//    if (releaseDate != null && StringUtils.isNotBlank(updateDate.getValue())) {
-//      doc.addField("updateDate", updateDate.getValue());
-//    }
-//    if (rights != null) {
-//      doc.addField("rights", rights.getValue());
-//    }
-//    if (title != null) {
-//      doc.addField("title", title.getValue());
-//    }
-//
-//    if (status != null) {
-//      try {
-//        doc.addField("status", GsonUtil.obj2Json(status, GsonUtil.conceptType));
-//      } catch (GsonUtilException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//
-//    return doc;
-//
-//  }
-//
-//  /**
-//   * Doc to DCAT distribution.
-//   *
-//   * @param doc the doc
-//   * @return the dcat distribution
-//   */
-//  public static DcatDistribution docToDcatDistribution(SolrDocument doc) {
-//
-//    String nodeIdentifier = doc.getFieldValue("nodeID").toString();
-//    String distribIssued = doc.getOrDefault("releaseDate", "").toString();
-//    if (StringUtils.isNotBlank(distribIssued)) {
-//      distribIssued = CommonUtil.toUtcDate(distribIssued);
-//    }
-//    String distribModified = doc.getOrDefault("updateDate", "").toString();
-//    if (StringUtils.isNotBlank(distribModified)) {
-//      distribModified = CommonUtil.toUtcDate(distribModified);
-//    }
-//
-//    List<SolrDocument> childDocs = doc.getChildDocuments();
-//    DctLicenseDocument license = null;
-//    SpdxChecksum checksum = null;
-//    List<DctStandard> linkedSchemas = new ArrayList<DctStandard>();
-//    SkosConceptStatus status = null;
-//    // List<Datalet> datalets = new ArrayList<Datalet>();
-//    if (null != childDocs) {
-//
-//      for (SolrDocument child : childDocs) {
-//
-//        //if (child.containsKey("content_type") && child.getFieldValue("content_type")
-//        //    .equals(CacheContentType.licenseDocument.toString())) {
-//        //  license = DctLicenseDocument.docToDctLicenseDocument(child, nodeIdentifier);
-//        //}
-//
-//        // if (child.containsKey("content_type")
-//        // &&
-//        // child.getFieldValue("content_type").equals(CacheContentType.linkedSchemas.toString()))
-//        // {
-//        // linkedSchemas.add(DCTStandard.docToDCATStandard(child, nodeID));
-//        // }
-//
-////        if (child.containsKey("content_type")
-////            && child.getFieldValue("content_type").equals(CacheContentType.checksum.toString())) {
-////          checksum = SpdxChecksum.docToSpdxChecksum(child, "http://spdx.org/rdf/terms#checksum",
-////              nodeIdentifier);
-////        }
-//
-//      }
-//    }
-//
-//    if (doc.getFieldValue("checksum") != null) {
-//      checksum = SpdxChecksum.jsonToSpdxChecksum(
-//          new JSONObject(doc.getFieldValue("checksum").toString()),
-//          "http://spdx.org/rdf/terms#checksum", nodeIdentifier);
-//    }
-//
-//    if (doc.getFieldValue("license") != null) {
-//      license = DctLicenseDocument.jsonToDctLicenseDocument(
-//          new JSONObject(doc.getFieldValue("license").toString()), nodeIdentifier);
-//    }
-//
-//    if (doc.getFieldValue("status") != null) {
-//      status = SkosConceptStatus.jsonToSkosConcept(
-//          new JSONObject(doc.getFieldValue("status").toString()),
-//          "http://www.w3.org/ns/adms#status", nodeIdentifier);
-//    }
-//
-//    // try {
-//    // license = GsonUtil.json2Obj(doc.getFieldValue("license").toString(),
-//    // GsonUtil.licenseType);
-//    // } catch (GsonUtilException e) {
-//    // e.printStackTrace();
-//    // }
-//
-//    if (doc.getFieldValue("linkedSchemas") != null) {
-//      linkedSchemas = DctStandard.jsonArrayToDcatStandardList(
-//          new JSONArray(doc.getFieldValue("linkedSchemas").toString()), nodeIdentifier);
-//    }
-//
-//    // try {
-//    // linkedSchemas =
-//    // GsonUtil.json2Obj(doc.getFieldValue("linkedSchemas").toString(),
-//    // GsonUtil.stdListType);
-//    // } catch (GsonUtilException e) {
-//    // e.printStackTrace();
-//    // }
-//
-//    // if (doc.getFieldValue("datalets") != null) {
-//    // try {
-//    // List<String> dataletsString = (List<String>) doc.getFieldValue("datalets");
-//    // for (String s : dataletsString)
-//    // datalets.add(GsonUtil.json2Obj(s, GsonUtil.dataletType));
-//    // } catch (GsonUtilException e) {
-//    // e.printStackTrace();
-//    // }
-//    // }
-//    String byteSize = "";
-//    if (doc.getFieldValue("byteSize") != null) {
-//      byteSize = doc.getFieldValue("byteSize").toString();
-//    }
-//
-//    DcatDistribution distr = new DcatDistribution(doc.getFieldValue("id").toString(),
-//        doc.getFieldValue("nodeID").toString(), doc.getFieldValue("accessURL").toString(),
-//        doc.getFieldValue("description").toString(), doc.getFieldValue("format").toString(),
-//        license, byteSize, checksum, (ArrayList<String>) doc.getFieldValue("documentation"),
-//        doc.getFieldValue("downloadURL").toString(),
-//        (ArrayList<String>) doc.getFieldValue("language"), linkedSchemas,
-//        (doc.getFieldValue("mediaType") != null) ? doc.getFieldValue("mediaType").toString() : "",
-//        distribIssued, distribModified,
-//        (doc.getFieldValue("rights") != null) ? doc.getFieldValue("rights").toString() : "", status,
-//        doc.getFieldValue("title").toString(), (Boolean) doc.getFieldValue("hasDatalets"));
-//    // datalets);
-//    distr.setStoredRdf((Boolean) doc.getFieldValue("storedRDF"));
-//    return distr;
-//  }
+  public SolrInputDocument toDoc() {
+
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", id);
+    doc.addField("content_type", CacheContentType.distribution.toString());
+    doc.addField("nodeID", nodeId);
+    doc.addField("storedRDF", storedRdf);
+    String descTmp = description != null ? description.getValue() : "";
+    try {
+      while (descTmp.getBytes("UTF-8").length >= 32766) {
+        descTmp = descTmp.substring(0, (int) Math.ceil(descTmp.length() * (0.9))).trim();
+      }
+      this.description.setValue(descTmp);
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+
+    if (accessUrl != null) {
+      doc.addField("accessURL", accessUrl.getValue());
+    }
+    if (description != null) {
+      doc.addField("description", description.getValue());
+    }
+
+    if (format != null) {
+      doc.addField("format", format.getValue());
+    }
+
+    // if (license != null)
+    // doc.addChildDocument(license.toDoc(CacheContentType.licenseDocument));
+
+    if (license != null) {
+      try {
+        doc.addField("license", GsonUtil.obj2Json(license, GsonUtil.licenseType));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+    // if (license != null)
+    // doc.addChildDocument(license.toDoc(CacheContentType.licenseDocument));
+    if (byteSize != null) {
+      doc.addField("byteSize", byteSize.getValue());
+    }
+
+    if (checksum != null) {
+      try {
+        doc.addField("checksum", GsonUtil.obj2Json(checksum, GsonUtil.checksumType));
+        // doc.addField("checksum",checksum.toDoc(CacheContentType.checksum));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+
+    // if (datalets != null && !datalets.isEmpty()) {
+    // try {
+    // for (Datalet datalet : datalets)
+    // doc.addField("datalets", GsonUtil.obj2Json(datalet, GsonUtil.dataletType));
+    // } catch (GsonUtilException e) {
+    // e.printStackTrace();
+    // }
+    // }
+
+    doc.addField("hasDatalets", hasDatalets);
+
+    // doc.addField("documentation", documentation.getValue());
+    // logger.info(downloadUrl);
+    if (downloadUrl != null) {
+      doc.addField("downloadURL", downloadUrl.getValue());
+    }
+
+    // doc.addField("language", language.getValue());
+
+    if (documentation != null && !documentation.isEmpty()) {
+      doc.addField("documentation", documentation.stream().filter(item -> item != null)
+          .map(item -> item.getValue()).collect(Collectors.toList()));
+    }
+    if (language != null && !language.isEmpty()) {
+      doc.addField("language", language.stream().filter(item -> item != null)
+          .map(item -> item.getValue()).collect(Collectors.toList()));
+    }
+
+    if (linkedSchemas != null && !linkedSchemas.isEmpty()) {
+      try {
+        doc.addField("linkedSchemas", GsonUtil.obj2Json(linkedSchemas, GsonUtil.stdListType));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+    // if (linkedSchemas != null && !linkedSchemas.isEmpty())
+    // linkedSchemas.stream().filter(item -> item != null)
+    // .forEach(item ->
+    // doc.addChildDocument(item.toDoc(CacheContentType.linkedSchemas)));
+    if (mediaType != null) {
+      doc.addField("mediaType", mediaType.getValue());
+    }
+
+    if (releaseDate != null && StringUtils.isNotBlank(releaseDate.getValue())) {
+      doc.addField("releaseDate", releaseDate.getValue());
+    }
+    if (updateDate != null && StringUtils.isNotBlank(updateDate.getValue())) {
+      doc.addField("updateDate", updateDate.getValue());
+    }
+    if (rights != null) {
+      doc.addField("rights", rights.getValue());
+    }
+    if (title != null) {
+      doc.addField("title", title.getValue());
+    }
+
+    if (identifier != null) {
+      doc.addField("identifier", identifier.getValue());
+    }
+
+    if (status != null) {
+      try {
+        doc.addField("status", GsonUtil.obj2Json(status, GsonUtil.conceptType));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+
+    // New fields
+
+    if (accessService != null && !accessService.isEmpty()) {
+      try {
+        doc.addField("accessService", GsonUtil.obj2Json(accessService, GsonUtil.dataServiceListType));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+
+    if (applicableLegislation != null && !applicableLegislation.isEmpty()) {
+      doc.addField("applicableLegislation", applicableLegislation.stream().filter(item -> item != null)
+          .map(item -> item.getValue()).collect(Collectors.toList()));
+    }
+
+    if (availability != null) {
+      doc.addField("availability", availability.getValue());
+    }
+    if (compressionFormat != null) {
+      doc.addField("compressionFormat", compressionFormat.getValue());
+    }
+    if (hasPolicy != null) {
+      doc.addField("hasPolicy", hasPolicy.getValue());
+    }
+    if (packagingFormat != null) {
+      doc.addField("packagingFormat", packagingFormat.getValue());
+    }
+    if (spatialResolution != null) {
+      doc.addField("spatialResolution", spatialResolution.getValue());
+    }
+    if (temporalResolution != null) {
+      doc.addField("temporalResolution", temporalResolution.getValue());
+    }
+
+    if (distributionDetails != null && !distributionDetails.isEmpty()) {
+      List<String> serializedDistributionDetails = new ArrayList<>();
+      int detailIndex = 0;
+      for (DcatDetails detail : distributionDetails) {
+        if (detail == null) {
+          continue;
+        }
+        String detailTitle = normalizeTextValue(detail.getTitle());
+        String detailDescription = normalizeTextValue(detail.getDescription());
+        String detailLanguage = normalizeLanguageValue(detail.getLanguage());
+        if (detailTitle == null && detailDescription == null) {
+          continue;
+        }
+
+        SolrInputDocument detailDoc = new SolrInputDocument();
+        detailDoc.addField("id", StringUtils.defaultIfBlank(detail.getId(), id + "#distributionDetail#" + detailIndex));
+        detailDoc.addField("content_type", CacheContentType.distributionDetails.toString());
+        detailDoc.addField("nodeID", nodeId);
+        if (detailTitle != null) {
+          detailDoc.addField("title", detailTitle);
+        }
+        if (detailDescription != null) {
+          detailDoc.addField("description", detailDescription);
+        }
+        if (detailLanguage != null) {
+          detailDoc.addField("language", detailLanguage);
+        }
+        doc.addChildDocument(detailDoc);
+        try {
+          DcatDetails serializedDetail = new DcatDetails(
+              null, null, null, null, null, detailDescription, detailTitle, detailLanguage);
+          serializedDistributionDetails.add(
+              GsonUtil.obj2Json(serializedDetail, DcatDetails.class));
+        } catch (GsonUtilException e) {
+          logger.debug("Unable to serialize distribution detail for Solr fallback field", e);
+        }
+        detailIndex++;
+      }
+      if (!serializedDistributionDetails.isEmpty()) {
+        doc.addField("distributionDetails_ss", serializedDistributionDetails);
+      }
+    }
+
+    return doc;
+
+  }
+
+  /**
+   * Doc to DCAT distribution.
+   *
+   * @param doc the doc
+   * @return the dcat distribution
+   */
+  public static DcatDistribution docToDcatDistribution(SolrDocument doc) {
+
+    String nodeIdentifier = doc.getFieldValue("nodeID").toString();
+    String distribIssued = doc.getOrDefault("releaseDate", "").toString();
+    if (StringUtils.isNotBlank(distribIssued)) {
+      distribIssued = CommonUtil.toUtcDate(distribIssued);
+    }
+    String distribModified = doc.getOrDefault("updateDate", "").toString();
+    if (StringUtils.isNotBlank(distribModified)) {
+      distribModified = CommonUtil.toUtcDate(distribModified);
+    }
+
+    List<SolrDocument> childDocs = doc.getChildDocuments();
+    DctLicenseDocument license = null;
+    SpdxChecksum checksum = null;
+    List<DctStandard> linkedSchemas = new ArrayList<DctStandard>();
+    SkosConceptStatus status = null;
+    List<DcatDetails> distributionDetails = new ArrayList<DcatDetails>();
+    // List<Datalet> datalets = new ArrayList<Datalet>();
+    if (null != childDocs) {
+
+      for (SolrDocument child : childDocs) {
+
+        if (child.containsKey("content_type")
+            && child.getFieldValue("content_type").equals(CacheContentType.distributionDetails.toString())) {
+          DcatDetails detail = new DcatDetails();
+          detail.setDistributionId(doc.getFieldValue("id").toString());
+          detail.setNodeId(nodeIdentifier);
+          detail.setTitle(extractDocFieldString(child, "title"));
+          detail.setDescription(extractDocFieldString(child, "description"));
+          detail.setLanguage(normalizeLanguageValue(extractDocFieldString(child, "language")));
+          if (StringUtils.isNotBlank(detail.getTitle()) || StringUtils.isNotBlank(detail.getDescription())) {
+            distributionDetails.add(detail);
+          }
+        }
+
+        if (child.containsKey("content_type") && child.getFieldValue("content_type")
+            .equals(CacheContentType.licenseDocument.toString())) {
+          license = DctLicenseDocument.docToDctLicenseDocument(child, nodeIdentifier);
+        }
+
+        // if (child.containsKey("content_type")
+        // &&
+        // child.getFieldValue("content_type").equals(CacheContentType.linkedSchemas.toString()))
+        // {
+        // linkedSchemas.add(DCTStandard.docToDCATStandard(child, nodeID));
+        // }
+
+        if (child.containsKey("content_type")
+            && child.getFieldValue("content_type").equals(CacheContentType.checksum.toString())) {
+          checksum = SpdxChecksum.docToSpdxChecksum(child, "http://spdx.org/rdf/terms#checksum",
+              nodeIdentifier);
+        }
+
+      }
+    }
+
+    if (doc.getFieldValue("checksum") != null) {
+      checksum = SpdxChecksum.jsonToSpdxChecksum(
+          new JSONObject(doc.getFieldValue("checksum").toString()),
+          "http://spdx.org/rdf/terms#checksum", nodeIdentifier);
+    }
+
+    if (doc.getFieldValue("license") != null) {
+      license = DctLicenseDocument.jsonToDctLicenseDocument(
+          new JSONObject(doc.getFieldValue("license").toString()), nodeIdentifier);
+    }
+
+    if (doc.getFieldValue("status") != null) {
+      status = SkosConceptStatus.jsonToSkosConcept(
+          new JSONObject(doc.getFieldValue("status").toString()),
+          "http://www.w3.org/ns/adms#status", nodeIdentifier);
+    }
+
+    // try {
+    // license = GsonUtil.json2Obj(doc.getFieldValue("license").toString(),
+    // GsonUtil.licenseType);
+    // } catch (GsonUtilException e) {
+    // e.printStackTrace();
+    // }
+
+    if (doc.getFieldValue("linkedSchemas") != null) {
+      linkedSchemas = DctStandard.jsonArrayToDcatStandardList(
+          new JSONArray(doc.getFieldValue("linkedSchemas").toString()), nodeIdentifier);
+    }
+
+    // try {
+    // linkedSchemas =
+    // GsonUtil.json2Obj(doc.getFieldValue("linkedSchemas").toString(),
+    // GsonUtil.stdListType);
+    // } catch (GsonUtilException e) {
+    // e.printStackTrace();
+    // }
+
+    // if (doc.getFieldValue("datalets") != null) {
+    // try {
+    // List<String> dataletsString = (List<String>) doc.getFieldValue("datalets");
+    // for (String s : dataletsString)
+    // datalets.add(GsonUtil.json2Obj(s, GsonUtil.dataletType));
+    // } catch (GsonUtilException e) {
+    // e.printStackTrace();
+    // }
+    // }
+    String byteSize = "";
+    if (doc.getFieldValue("byteSize") != null) {
+      byteSize = doc.getFieldValue("byteSize").toString();
+    }
+
+    // new
+    List<DcatDataService> accessService = new ArrayList<DcatDataService>();
+    if (doc.getFieldValue("accessService") != null) {
+      accessService = DcatDataService.jsonArrayToDcatDataService(
+          new JSONArray(doc.getFieldValue("accessService").toString()), nodeIdentifier);
+    }
+
+    /*
+     * List<String> applicableLegislation = new ArrayList<String>();
+     * if (doc.getFieldValue("applicableLegislation") != null) {
+     * JSONArray jsonArray = new
+     * JSONArray(doc.getFieldValue("applicableLegislation").toString());
+     * for (int i = 0; i < jsonArray.length(); i++) {
+     * applicableLegislation.add(jsonArray.optString(i, ""));
+     * }
+     * }
+     */
+
+    /*
+     * List<String> applicableLegislation = new ArrayList<>();
+     * Collection<Object> values = doc.getFieldValues("applicableLegislation");
+     * if (values != null) {
+     * for (Object val : values) {
+     * if (val != null && !val.toString().isEmpty()) {
+     * applicableLegislation.add(val.toString());
+     * }
+     * }
+     * }
+     */
+
+    String availability = null;
+    if (doc.getFieldValue("availability") != null) {
+      availability = doc.getFieldValue("availability").toString();
+    }
+
+    String compressionFormat = null;
+    if (doc.getFieldValue("compressionFormat") != null) {
+      compressionFormat = doc.getFieldValue("compressionFormat").toString();
+    }
+
+    String hasPolicy = null;
+    if (doc.getFieldValue("hasPolicy") != null) {
+      hasPolicy = doc.getFieldValue("hasPolicy").toString();
+    }
+
+    String packagingFormat = null;
+    if (doc.getFieldValue("packagingFormat") != null) {
+      packagingFormat = doc.getFieldValue("packagingFormat").toString();
+    }
+
+    String spatialResolution = null;
+    if (doc.getFieldValue("spatialResolution") != null) {
+      spatialResolution = doc.getFieldValue("spatialResolution").toString();
+    }
+
+    String temporalResolution = null;
+    if (doc.getFieldValue("temporalResolution") != null) {
+      temporalResolution = doc.getFieldValue("temporalResolution").toString();
+    }
+
+    DcatDistribution distr = new DcatDistribution(doc.getFieldValue("id").toString(),
+        doc.getFieldValue("nodeID").toString(),
+        doc.getFieldValue("accessURL") != null ? doc.getFieldValue("accessURL").toString() : "",
+        doc.getFieldValue("description") != null ? doc.getFieldValue("description").toString() : "",
+        doc.getFieldValue("format") != null ? doc.getFieldValue("format").toString() : "",
+        license, byteSize, checksum,
+        doc.getFieldValue("documentation") != null ? (ArrayList<String>) doc.getFieldValue("documentation") : null,
+        doc.getFieldValue("downloadURL") != null ? doc.getFieldValue("downloadURL").toString() : "",
+        doc.getFieldValue("language") != null ? (ArrayList<String>) doc.getFieldValue("language") : null, linkedSchemas,
+        (doc.getFieldValue("mediaType") != null) ? doc.getFieldValue("mediaType").toString() : "",
+        distribIssued, distribModified,
+        (doc.getFieldValue("rights") != null) ? doc.getFieldValue("rights").toString() : "", status,
+        doc.getFieldValue("title").toString(), (Boolean) doc.getFieldValue("hasDatalets"),
+        accessService,
+        (ArrayList<String>) doc.getFieldValue("applicableLegislation"), // applicableLegislation,
+        availability, compressionFormat, hasPolicy,
+        packagingFormat, spatialResolution, temporalResolution);
+    // datalets);accessService
+    distr.setStoredRdf((Boolean) doc.getFieldValue("storedRDF"));
+
+    if (doc.getFieldValue("identifier") != null) {
+      distr.setIdentifier((String) doc.getFieldValue("identifier").toString());
+    }
+    Collection<Object> serializedDistributionDetails = doc.getFieldValues("distributionDetails_ss");
+    if (serializedDistributionDetails != null) {
+      for (Object serializedDetail : serializedDistributionDetails) {
+        if (serializedDetail == null) {
+          continue;
+        }
+        try {
+          DcatDetails detail = GsonUtil.json2Obj(serializedDetail.toString(), DcatDetails.class);
+          if (detail == null) {
+            continue;
+          }
+          detail.setDistributionId(doc.getFieldValue("id") != null ? doc.getFieldValue("id").toString() : null);
+          detail.setNodeId(nodeIdentifier);
+          detail.setTitle(normalizeTextValue(detail.getTitle()));
+          detail.setDescription(normalizeTextValue(detail.getDescription()));
+          detail.setLanguage(normalizeLanguageValue(detail.getLanguage()));
+          if (StringUtils.isNotBlank(detail.getTitle()) || StringUtils.isNotBlank(detail.getDescription())) {
+            distributionDetails.add(detail);
+          }
+        } catch (GsonUtilException e) {
+          logger.debug("Unable to parse serialized distribution detail from Solr field", e);
+        }
+      }
+    }
+
+    if (!distributionDetails.isEmpty()) {
+      Map<String, DcatDetails> deduplicated = new LinkedHashMap<>();
+      for (DcatDetails detail : distributionDetails) {
+        if (detail == null) {
+          continue;
+        }
+        String detailLanguage = normalizeLanguageValue(detail.getLanguage());
+        String detailTitle = normalizeTextValue(detail.getTitle());
+        String detailDescription = normalizeTextValue(detail.getDescription());
+        if (detailTitle == null && detailDescription == null) {
+          continue;
+        }
+        detail.setLanguage(detailLanguage);
+        detail.setTitle(detailTitle);
+        detail.setDescription(detailDescription);
+        String key = (detailLanguage == null ? "" : detailLanguage) + "|" + (detailTitle == null ? "" : detailTitle)
+            + "|" + (detailDescription == null ? "" : detailDescription);
+        deduplicated.putIfAbsent(key, detail);
+      }
+      distr.setDistributionDetails(new ArrayList<>(deduplicated.values()));
+    } else {
+      String fallbackTitle = doc.getFieldValue("title") != null ? doc.getFieldValue("title").toString() : null;
+      String fallbackDescription = doc.getFieldValue("description") != null
+          ? doc.getFieldValue("description").toString()
+          : null;
+      if (StringUtils.isNotBlank(fallbackTitle) || StringUtils.isNotBlank(fallbackDescription)) {
+        DcatDetails fallback = new DcatDetails(null, null, null, null, nodeIdentifier,
+            fallbackDescription, fallbackTitle, null);
+        fallback.setDistributionId(doc.getFieldValue("id") != null ? doc.getFieldValue("id").toString() : null);
+        distr.setDistributionDetails(Arrays.asList(fallback));
+      }
+    }
+
+    return distr;
+  }
 
   /*
    * (non-Javadoc)

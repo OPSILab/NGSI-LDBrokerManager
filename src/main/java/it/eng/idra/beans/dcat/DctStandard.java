@@ -16,18 +16,33 @@
 package it.eng.idra.beans.dcat;
 
 import com.google.gson.annotations.SerializedName;
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.CollectionTable;
+import javax.persistence.Column;
+import javax.persistence.ElementCollection;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.RDFS;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -35,6 +50,8 @@ import org.json.JSONObject;
 /**
  * The Class DctStandard.
  */
+@Entity
+@Table(name = "dcat_standard")
 //@IdClass(DCTStandardId.class)
 public class DctStandard implements Serializable {
 
@@ -112,6 +129,10 @@ public class DctStandard implements Serializable {
    *
    * @return the id
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
+  @Column(name = "standard_id")
   public String getId() {
     return id;
   }
@@ -148,6 +169,10 @@ public class DctStandard implements Serializable {
    *
    * @return the identifier
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", 
+          column = @Column(name = "identifier", columnDefinition = "LONGTEXT")) })
   public DcatProperty getIdentifier() {
     return identifier;
   }
@@ -166,6 +191,8 @@ public class DctStandard implements Serializable {
    *
    * @return the title
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "title")) })
   public DcatProperty getTitle() {
     return title;
   }
@@ -184,6 +211,10 @@ public class DctStandard implements Serializable {
    *
    * @return the description
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value",
+          column = @Column(name = "description", columnDefinition = "LONGTEXT")) })
   public DcatProperty getDescription() {
     return description;
   }
@@ -202,6 +233,13 @@ public class DctStandard implements Serializable {
    *
    * @return the reference documentation
    */
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @ElementCollection
+  @CollectionTable(name = "dcat_standard_referencedocumentation", joinColumns = {
+      @JoinColumn(name = "standard_id", referencedColumnName = "standard_id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "referenceDocumentation")) })
   public List<DcatProperty> getReferenceDocumentation() {
     return referenceDocumentation;
   }
@@ -239,6 +277,7 @@ public class DctStandard implements Serializable {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }
@@ -249,19 +288,19 @@ public class DctStandard implements Serializable {
    * @param contentType the content type
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("uri", this.uri);
-//    doc.addField("identifier", this.getIdentifier().getValue());
-//    doc.addField("title", this.getTitle().getValue());
-//    doc.addField("description", this.getDescription().getValue());
-//    doc.addField("referenceDocumentation", this.getReferenceDocumentation().stream()
-//        .filter(item -> item != null).map(item -> item.getValue()).collect(Collectors.toList()));
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType) {
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", this.id);
+    doc.addField("nodeID", this.nodeId);
+    doc.addField("content_type", contentType.toString());
+    doc.addField("uri", this.uri);
+    doc.addField("identifier", this.getIdentifier().getValue());
+    doc.addField("title", this.getTitle().getValue());
+    doc.addField("description", this.getDescription().getValue());
+    doc.addField("referenceDocumentation", this.getReferenceDocumentation().stream()
+        .filter(item -> item != null).map(item -> item.getValue()).collect(Collectors.toList()));
+    return doc;
+  }
 
   /**
    * Doc to dcat standard.
@@ -270,18 +309,18 @@ public class DctStandard implements Serializable {
    * @param nodeId the node id
    * @return the dct standard
    */
-//  public static DctStandard docToDcatStandard(SolrDocument doc, String nodeId) {
-//    String uri = DCTerms.conformsTo.getURI();
-//    if (doc.containsKey("uri")) {
-//      uri = doc.getFieldValue("uri").toString();
-//    }
-//    DctStandard s = new DctStandard(uri, doc.getFieldValue("identifier").toString(),
-//        doc.getFieldValue("title").toString(), doc.getFieldValue("description").toString(),
-//        (ArrayList<String>) doc.getFieldValue("referenceDocumentation"), nodeId);
-//    s.setId(doc.getFieldValue("id").toString());
-//    return s;
-//
-//  }
+  public static DctStandard docToDcatStandard(SolrDocument doc, String nodeId) {
+    String uri = DCTerms.conformsTo.getURI();
+    if (doc.containsKey("uri")) {
+      uri = doc.getFieldValue("uri").toString();
+    }
+    DctStandard s = new DctStandard(uri, doc.getFieldValue("identifier").toString(),
+        doc.getFieldValue("title").toString(), doc.getFieldValue("description").toString(),
+        (ArrayList<String>) doc.getFieldValue("referenceDocumentation"), nodeId);
+    s.setId(doc.getFieldValue("id").toString());
+    return s;
+
+  }
 
   /**
    * Json array to dcat standard list.

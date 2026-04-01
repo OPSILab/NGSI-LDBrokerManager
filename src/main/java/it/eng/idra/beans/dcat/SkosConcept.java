@@ -16,16 +16,31 @@
 package it.eng.idra.beans.dcat;
 
 import com.google.gson.annotations.SerializedName;
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
 import it.eng.idra.utils.GsonUtil;
 import it.eng.idra.utils.GsonUtilException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.DiscriminatorColumn;
+import javax.persistence.DiscriminatorType;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinColumns;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.SKOS;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,6 +49,9 @@ import org.json.JSONObject;
  * Represents a SKOS Concept, e.g SKOSConceptTheme or SKOSConceptSubject.
  */
 
+@Entity
+@DiscriminatorColumn(name = "type", discriminatorType = DiscriminatorType.STRING)
+@Table(name = "dcat_concept")
 public class SkosConcept implements Serializable {
 
   /** The Constant serialVersionUID. */
@@ -101,6 +119,10 @@ public class SkosConcept implements Serializable {
    * 
    * @GenericGenerator(name="increment", strategy = "increment")
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
+  @Column(name = "concept_id")
   public String getId() {
     return id;
   }
@@ -137,6 +159,7 @@ public class SkosConcept implements Serializable {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }
@@ -146,6 +169,7 @@ public class SkosConcept implements Serializable {
    *
    * @return the property uri
    */
+  @Transient
   public String getPropertyUri() {
     return propertyUri;
   }
@@ -184,6 +208,11 @@ public class SkosConcept implements Serializable {
    *
    * @return the pref label
    */
+  @LazyCollection(LazyCollectionOption.FALSE)
+  @OneToMany(cascade = { CascadeType.ALL })
+  // @Fetch(FetchMode.SELECT)
+  @JoinColumns({ @JoinColumn(name = "concept_id", referencedColumnName = "concept_id"),
+      @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
   public List<SkosPrefLabel> getPrefLabel() {
     return prefLabel;
   }
@@ -203,24 +232,24 @@ public class SkosConcept implements Serializable {
    * @param contentType the content type
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("resourceUri", this.resourceUri);
-//
-//    if (prefLabel != null && !prefLabel.isEmpty()) {
-//      try {
-//        doc.addField("prefLabel", GsonUtil.obj2Json(prefLabel, GsonUtil.prefLabelListType));
-//      } catch (GsonUtilException e) {
-//        e.printStackTrace();
-//      }
-//    }
-//
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType) {
+
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", this.id);
+    doc.addField("nodeID", this.nodeId);
+    doc.addField("content_type", contentType.toString());
+    doc.addField("resourceUri", this.resourceUri);
+
+    if (prefLabel != null && !prefLabel.isEmpty()) {
+      try {
+        doc.addField("prefLabel", GsonUtil.obj2Json(prefLabel, GsonUtil.prefLabelListType));
+      } catch (GsonUtilException e) {
+        e.printStackTrace();
+      }
+    }
+
+    return doc;
+  }
 
   /**
    * Json to skos concept.
@@ -244,12 +273,12 @@ public class SkosConcept implements Serializable {
    * @param nodeId      the node ID
    * @return the skos concept
    */
-//  public static SkosConcept docToSkosConcept(SolrDocument doc, String propertyUri, String nodeId) {
-//
-//    return new SkosConcept(propertyUri, (String) doc.getFieldValue("resourceUri"), SkosPrefLabel
-//        .jsonArrayToPrefLabelList(new JSONArray(doc.getFieldValue("prefLabel").toString()), nodeId),
-//        nodeId);
-//  }
+  public static SkosConcept docToSkosConcept(SolrDocument doc, String propertyUri, String nodeId) {
+
+    return new SkosConcept(propertyUri, (String) doc.getFieldValue("resourceUri"), SkosPrefLabel
+        .jsonArrayToPrefLabelList(new JSONArray(doc.getFieldValue("prefLabel").toString()), nodeId),
+        nodeId);
+  }
 
   /*
    * (non-Javadoc)

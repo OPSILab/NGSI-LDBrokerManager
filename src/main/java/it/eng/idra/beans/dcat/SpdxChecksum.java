@@ -16,20 +16,31 @@
 package it.eng.idra.beans.dcat;
 
 import com.google.gson.annotations.SerializedName;
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.vocabulary.RDFS;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.hibernate.annotations.GenericGenerator;
 import org.json.JSONObject;
 
 // TODO: Auto-generated Javadoc
 /**
  * The Class SpdxChecksum.
  */
-
+@Entity
+@Table(name = "dcat_checksum")
 public class SpdxChecksum {
 
   /** The Constant RDFClass. */
@@ -84,6 +95,10 @@ public class SpdxChecksum {
    *
    * @return the id
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
+  @Column(name = "checksum_id")
   public String getId() {
     return id;
   }
@@ -120,6 +135,7 @@ public class SpdxChecksum {
    *
    * @return the uri
    */
+  @Transient
   public String getUri() {
     return uri;
   }
@@ -138,6 +154,8 @@ public class SpdxChecksum {
    *
    * @return the algorithm
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "algorithm")) })
   public DcatProperty getAlgorithm() {
     return algorithm;
   }
@@ -156,6 +174,9 @@ public class SpdxChecksum {
    *
    * @return the checksum value
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "checksumValue")) })
   public DcatProperty getChecksumValue() {
     return checksumValue;
   }
@@ -175,15 +196,15 @@ public class SpdxChecksum {
    * @param contentType the content type
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("algorithm", this.algorithm != null ? this.algorithm.getValue() : "");
-//    doc.addField("checksumValue", this.checksumValue != null ? this.checksumValue.getValue() : "");
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType) {
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", this.id);
+    doc.addField("nodeID", this.nodeId);
+    doc.addField("content_type", contentType.toString());
+    doc.addField("algorithm", this.algorithm != null ? this.algorithm.getValue() : "");
+    doc.addField("checksumValue", this.checksumValue != null ? this.checksumValue.getValue() : "");
+    return doc;
+  }
 
   /**
    * Doc to spdx checksum.
@@ -193,13 +214,13 @@ public class SpdxChecksum {
    * @param nodeId the node id
    * @return the spdx checksum
    */
-//  public static SpdxChecksum docToSpdxChecksum(SolrDocument doc, String uri, String nodeId) {
-//    SpdxChecksum c = new SpdxChecksum(uri, doc.getFieldValue("algorithm").toString(),
-//        doc.getFieldValue("checksumValue").toString(), nodeId);
-//    c.setId(doc.getFieldValue("id").toString());
-//    return c;
-//
-//  }
+  public static SpdxChecksum docToSpdxChecksum(SolrDocument doc, String uri, String nodeId) {
+    SpdxChecksum c = new SpdxChecksum(uri, doc.getFieldValue("algorithm").toString(),
+        doc.getFieldValue("checksumValue").toString(), nodeId);
+    c.setId(doc.getFieldValue("id").toString());
+    return c;
+
+  }
 
   /**
    * Json to spdx checksum.
@@ -220,6 +241,7 @@ public class SpdxChecksum {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }

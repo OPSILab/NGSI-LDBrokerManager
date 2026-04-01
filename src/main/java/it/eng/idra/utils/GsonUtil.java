@@ -37,13 +37,19 @@ import it.eng.idra.beans.User;
 //import it.eng.idra.beans.ckan.CkanErrorResponse;
 //import it.eng.idra.beans.ckan.CkanSuccessResponse;
 import it.eng.idra.beans.dcat.DcatDataset;
+import it.eng.idra.beans.dcat.DcatDataService;
+import it.eng.idra.beans.dcat.DcatDetails;
 import it.eng.idra.beans.dcat.DcatDistribution;
 import it.eng.idra.beans.dcat.DcatProperty;
 import it.eng.idra.beans.dcat.DctLicenseDocument;
+import it.eng.idra.beans.dcat.DctLocation;
+import it.eng.idra.beans.dcat.DctPeriodOfTime;
 import it.eng.idra.beans.dcat.DctStandard;
+import it.eng.idra.beans.dcat.Relationship;
 import it.eng.idra.beans.dcat.SkosConcept;
 import it.eng.idra.beans.dcat.SkosPrefLabel;
 import it.eng.idra.beans.dcat.SpdxChecksum;
+import it.eng.idra.beans.dcat.VcardOrganization;
 import it.eng.idra.beans.odms.OdmsCatalogue;
 import it.eng.idra.beans.odms.OdmsCatalogueImage;
 import it.eng.idra.beans.odms.OdmsCatalogueMessage;
@@ -189,6 +195,30 @@ public final class GsonUtil {
   public static Type distributionListType = new TypeToken<List<DcatDistribution>>() {
   }.getType();
 
+  /** The data service list type. */
+  public static Type dataServiceListType = new TypeToken<List<DcatDataService>>() {
+  }.getType();
+
+  /** The relationship list type. */
+  public static Type relationshipListType = new TypeToken<List<Relationship>>() {
+  }.getType();
+
+  /** The multilingual details list type. */
+  public static Type detailsListType = new TypeToken<List<DcatDetails>>() {
+  }.getType();
+
+  /** The vcard list type. */
+  public static Type vcardListType = new TypeToken<List<VcardOrganization>>() {
+  }.getType();
+
+  /** The location list type. */
+  public static Type locationListType = new TypeToken<List<DctLocation>>() {
+  }.getType();
+
+  /** The period of time list type. */
+  public static Type periodOfTimeListType = new TypeToken<List<DctPeriodOfTime>>() {
+  }.getType();
+
   /** The spod dataset type. */
 //  public static Type spodDatasetType = new TypeToken<SpodDataset>() {
 //  }.getType();
@@ -275,13 +305,8 @@ public final class GsonUtil {
           return new JsonPrimitive(
               dtFormatter.format(zonedDateTime.truncatedTo(ChronoUnit.SECONDS)));
         }
-      }).registerTypeAdapter(DcatProperty.class, new JsonSerializer<DcatProperty>() {
-        @Override
-        public JsonElement serialize(DcatProperty property, Type type,
-            JsonSerializationContext jsonSerializationContext) {
-          return new JsonPrimitive(property.getValue().toString());
-        }
-      }).registerTypeAdapter(OdmsCatalogue.class, new AnnotatedDeserializer<OdmsCatalogue>())
+      }).registerTypeAdapter(DcatProperty.class, new DcatPropertyAdapter())
+      .registerTypeAdapter(OdmsCatalogue.class, new AnnotatedDeserializer<OdmsCatalogue>())
       .registerTypeAdapter(ConfigurationParameter.class,
           new AnnotatedDeserializer<ConfigurationParameter>())
       .registerTypeAdapter(RdfPrefix.class, new AnnotatedDeserializer<RdfPrefix>())
@@ -477,6 +502,49 @@ public final class GsonUtil {
       }
       return pojo;
 
+    }
+  }
+
+  /**
+   * Gson adapter for DcatProperty that accepts both object and primitive forms.
+   */
+  static class DcatPropertyAdapter
+      implements JsonSerializer<DcatProperty>, JsonDeserializer<DcatProperty> {
+
+    @Override
+    public JsonElement serialize(DcatProperty property, Type type,
+        JsonSerializationContext jsonSerializationContext) {
+      if (property == null || property.getValue() == null) {
+        return new JsonPrimitive("");
+      }
+      return new JsonPrimitive(property.getValue());
+    }
+
+    @Override
+    public DcatProperty deserialize(JsonElement json, Type typeOfT,
+        JsonDeserializationContext context) throws JsonParseException {
+      if (json == null || json.isJsonNull()) {
+        return new DcatProperty();
+      }
+
+      if (json.isJsonPrimitive()) {
+        return new DcatProperty("", json.getAsString());
+      }
+
+      if (json.isJsonObject()) {
+        JsonElement valueElement = json.getAsJsonObject().get("value");
+        if (valueElement == null || valueElement.isJsonNull()) {
+          valueElement = json.getAsJsonObject().get("@value");
+        }
+        if (valueElement != null && !valueElement.isJsonNull()) {
+          if (valueElement.isJsonPrimitive()) {
+            return new DcatProperty("", valueElement.getAsString());
+          }
+          return new DcatProperty("", valueElement.toString());
+        }
+      }
+
+      return new DcatProperty("", json.toString());
     }
   }
 }

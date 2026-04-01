@@ -16,13 +16,20 @@
 package it.eng.idra.beans.dcat;
 
 import com.google.gson.annotations.SerializedName;
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
 import java.util.ArrayList;
 import java.util.List;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.SKOS;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.hibernate.annotations.GenericGenerator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -31,6 +38,8 @@ import org.json.JSONObject;
  * Represents a SKOS Concept label in a specific language.
  */
 
+@Entity
+@Table(name = "dcat_concept_prefLabel")
 public class SkosPrefLabel {
 
   /** The id. */
@@ -74,6 +83,10 @@ public class SkosPrefLabel {
    *
    * @return the id
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
+  @Column(name = "prefLabel_id")
   public String getId() {
     return id;
   }
@@ -110,6 +123,7 @@ public class SkosPrefLabel {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }
@@ -156,16 +170,16 @@ public class SkosPrefLabel {
    * @param contentType the content type
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("value", this.getValue());
-//    doc.addField("language", this.getLanguage());
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType) {
+
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", this.id);
+    doc.addField("nodeID", this.nodeId);
+    doc.addField("content_type", contentType.toString());
+    doc.addField("value", this.getValue());
+    doc.addField("language", this.getLanguage());
+    return doc;
+  }
 
   /**
    * Doc to skos pref label.
@@ -175,13 +189,13 @@ public class SkosPrefLabel {
    * @param nodeId      the node id
    * @return the skos pref label
    */
-//  public static SkosPrefLabel docToSkosPrefLabel(SolrDocument doc, String propertyUri,
-//      String nodeId) {
-//    SkosPrefLabel s = new SkosPrefLabel((String) doc.getFieldValue("language"),
-//        doc.getFieldValue("value").toString(), nodeId);
-//    s.setId(doc.getFieldValue("id").toString());
-//    return s;
-//  }
+  public static SkosPrefLabel docToSkosPrefLabel(SolrDocument doc, String propertyUri,
+      String nodeId) {
+    SkosPrefLabel s = new SkosPrefLabel((String) doc.getFieldValue("language"),
+        doc.getFieldValue("value").toString(), nodeId);
+    s.setId(doc.getFieldValue("id").toString());
+    return s;
+  }
 
   /**
    * Json array to pref label list.

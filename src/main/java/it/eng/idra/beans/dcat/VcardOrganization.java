@@ -16,12 +16,23 @@
 package it.eng.idra.beans.dcat;
 
 import com.google.gson.annotations.SerializedName;
+import it.eng.idra.cache.CacheContentType;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Transient;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.VCARD4;
-//import org.apache.solr.common.SolrDocument;
-//import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrInputDocument;
+import org.hibernate.annotations.GenericGenerator;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -30,6 +41,8 @@ import org.apache.jena.vocabulary.VCARD4;
  * @author
  */
 
+@Entity
+@Table(name = "dcat_vcard")
 public class VcardOrganization {
 
   /** The Constant RDFClass. */
@@ -49,6 +62,7 @@ public class VcardOrganization {
 
   /** The node id. */
   @SerializedName(value = "nodeID")
+  @Column(name = "nodeID")
   private String nodeId;
 
   /** The has email. */
@@ -81,6 +95,7 @@ public class VcardOrganization {
    * @param hasTelephoneValue the has telephone value
    * @param hasTelephoneType  the has telephone type
    * @param nodeId            the node ID
+   * 
    */
   public VcardOrganization(String propertyUri, String resourceUri, String fn, String hasEmail,
       String hasUrl, String hasTelephoneValue, String hasTelephoneType, String nodeId) {
@@ -121,6 +136,7 @@ public class VcardOrganization {
    *
    * @return the rdf class
    */
+  @Transient
   public static Resource getRdfClass() {
     return RDFClass;
   }
@@ -130,6 +146,10 @@ public class VcardOrganization {
    *
    * @return the id
    */
+  @Id
+  @GeneratedValue(generator = "uuid")
+  @GenericGenerator(name = "uuid", strategy = "uuid2")
+  @Column(name = "vcard_id")
   public String getId() {
     return id;
   }
@@ -185,6 +205,7 @@ public class VcardOrganization {
    *
    * @return the property uri
    */
+  @Transient
   public String getPropertyUri() {
     return propertyUri;
   }
@@ -203,6 +224,9 @@ public class VcardOrganization {
    *
    * @return the fn
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "fn", length = 500)) })
   public DcatProperty getFn() {
     return fn;
   }
@@ -221,6 +245,8 @@ public class VcardOrganization {
    *
    * @return the checks for email
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "hasEmail")) })
   public DcatProperty getHasEmail() {
     return hasEmail;
   }
@@ -239,6 +265,8 @@ public class VcardOrganization {
    *
    * @return the checks for url
    */
+  @Embedded
+  @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "hasURL")) })
   public DcatProperty getHasUrl() {
     return hasUrl;
   }
@@ -257,6 +285,9 @@ public class VcardOrganization {
    *
    * @return the checks for telephone value
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "hasTelephoneValue")) })
   public DcatProperty getHasTelephoneValue() {
     return hasTelephoneValue;
   }
@@ -275,6 +306,10 @@ public class VcardOrganization {
    *
    * @return the checks for telephone type
    */
+  @Embedded
+  @AttributeOverrides({
+      @AttributeOverride(name = "value", column = @Column(name = "hasTelephoneType")) })
+
   public DcatProperty getHasTelephoneType() {
     return hasTelephoneType;
   }
@@ -294,19 +329,28 @@ public class VcardOrganization {
    * @param contentType the content type
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType) {
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", this.id);
-//    doc.addField("nodeID", this.nodeId);
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField("resourceUri", this.resourceUri);
-//    doc.addField("fn", this.getFn().getValue());
-//    doc.addField("hasEmail", this.getHasEmail().getValue());
-//    doc.addField("hasURL", this.getHasUrl().getValue());
-//    doc.addField("hasTelephoneValue", this.getHasTelephoneValue().getValue());
-//    doc.addField("hasTelephoneType", this.getHasTelephoneType().getValue());
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType) {
+    SolrInputDocument doc = new SolrInputDocument();
+    if (this.id != null)
+      doc.addField("id", this.id);
+    if (this.nodeId != null)
+      doc.addField("nodeID", this.nodeId);
+    if (contentType.toString() != null)
+      doc.addField("content_type", contentType.toString());
+    if (this.resourceUri != null)
+      doc.addField("resourceUri", this.resourceUri);
+    if (this.getFn().getValue() != null)
+      doc.addField("fn", this.getFn().getValue());
+    if (this.getHasEmail().getValue() != null)
+      doc.addField("hasEmail", this.getHasEmail().getValue());
+    if (this.getHasUrl().getValue() != null)
+      doc.addField("hasURL", this.getHasUrl().getValue());
+    if (this.getHasTelephoneValue().getValue() != null)
+      doc.addField("hasTelephoneValue", this.getHasTelephoneValue().getValue());
+    if (this.getHasTelephoneType().getValue() != null)
+      doc.addField("hasTelephoneType", this.getHasTelephoneType().getValue());
+    return doc;
+  }
 
   /**
    * Doc to V card organization.
@@ -316,14 +360,18 @@ public class VcardOrganization {
    * @param nodeId      the node ID
    * @return the v card organization
    */
-//  public static VcardOrganization docToVcardOrganization(SolrDocument doc, String propertyUri,
-//      String nodeId) {
-//    return new VcardOrganization((String) doc.getFieldValue("id"), propertyUri,
-//        (String) doc.getFieldValue("resourceUri"), doc.getFieldValue("fn").toString(),
-//        doc.getFieldValue("hasEmail").toString(), doc.getFieldValue("hasURL").toString(),
-//        doc.getFieldValue("hasTelephoneValue").toString(),
-//        doc.getFieldValue("hasTelephoneType").toString(), nodeId);
-//  }
+  public static VcardOrganization docToVcardOrganization(SolrDocument doc, String propertyUri,
+      String nodeId) {
+    return new VcardOrganization(doc.getFieldValue("id") != null ? doc.getFieldValue("id").toString() : null,
+        propertyUri,
+        doc.getFieldValue("resourceUri") != null ? doc.getFieldValue("resourceUri").toString() : null,
+        doc.getFieldValue("fn") != null ? doc.getFieldValue("fn").toString() : null,
+        doc.getFieldValue("hasEmail") != null ? doc.getFieldValue("hasEmail").toString() : null,
+        doc.getFieldValue("hasURL") != null ? doc.getFieldValue("hasURL").toString() : null,
+        doc.getFieldValue("hasTelephoneValue") != null ? doc.getFieldValue("hasTelephoneValue").toString() : null,
+        doc.getFieldValue("hasTelephoneType") != null ? doc.getFieldValue("hasTelephoneType").toString() : null,
+        nodeId);
+  }
 
   /*
    * (non-Javadoc)

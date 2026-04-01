@@ -15,17 +15,20 @@
 
 package it.eng.idra.beans.dcat;
 
-//import it.eng.idra.cache.CacheContentType;
+import it.eng.idra.cache.CacheContentType;
 import java.util.UUID;
+import javax.persistence.Embeddable;
+import javax.persistence.Transient;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
-
+import org.apache.solr.common.SolrInputDocument;
 
 // TODO: Auto-generated Javadoc
 /**
  * The Class DcatProperty.
  */
+@Embeddable
 public class DcatProperty {
 
   // private String id;
@@ -122,6 +125,7 @@ public class DcatProperty {
    *
    * @return the uri
    */
+  @Transient
   public String getUri() {
     return uri;
   }
@@ -140,6 +144,7 @@ public class DcatProperty {
    *
    * @return the range
    */
+  @Transient
   public Resource getRange() {
     return range;
   }
@@ -200,6 +205,7 @@ public class DcatProperty {
    *
    * @return the property
    */
+  @Transient
   public Property getProperty() {
     return property;
   }
@@ -220,13 +226,13 @@ public class DcatProperty {
    * @param fieldName   the field name
    * @return the solr input document
    */
-//  public SolrInputDocument toDoc(CacheContentType contentType, String fieldName) {
-//    SolrInputDocument doc = new SolrInputDocument();
-//    doc.addField("id", UUID.randomUUID().toString());
-//    doc.addField("content_type", contentType.toString());
-//    doc.addField(fieldName, this.value);
-//    return doc;
-//  }
+  public SolrInputDocument toDoc(CacheContentType contentType, String fieldName) {
+    SolrInputDocument doc = new SolrInputDocument();
+    doc.addField("id", UUID.randomUUID().toString());
+    doc.addField("content_type", contentType.toString());
+    doc.addField(fieldName, this.value);
+    return doc;
+  }
 
   /*
    * (non-Javadoc)

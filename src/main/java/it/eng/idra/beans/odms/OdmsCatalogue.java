@@ -19,7 +19,14 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import it.eng.idra.beans.dcat.DcatApFormat;
 import it.eng.idra.beans.dcat.DcatApProfile;
+import it.eng.idra.beans.dcat.DcatCatalogueRecord;
+import it.eng.idra.beans.dcat.DcatDataService;
+import it.eng.idra.beans.dcat.DcatProperty;
+import it.eng.idra.beans.dcat.DctLocation;
+import it.eng.idra.beans.dcat.DctPeriodOfTime;
+import it.eng.idra.beans.dcat.FoafAgent;
 import it.eng.idra.beans.webscraper.WebScraperSitemap;
+import java.util.List;
 //import it.eng.idra.scheduler.IdraScheduler;
 import it.eng.idra.utils.JsonRequired;
 import java.time.ZoneOffset;
@@ -162,6 +169,30 @@ public class OdmsCatalogue {
 
   /** The dcat format. */
   private DcatApFormat dcatFormat;
+
+  /** DCAT-AP 3 - Applicable legislation for this catalogue. */
+  @Expose
+  private List<DcatProperty> applicableLegislation;
+
+  /** DCAT-AP 3 - Creator agent of this catalogue. */
+  @Expose
+  private FoafAgent creator;
+
+  /** DCAT-AP 3 - Geographical coverage of the catalogue. */
+  @Expose
+  private List<DctLocation> geographicalCoverage;
+
+  /** DCAT-AP 3 - Temporal coverage of the catalogue. */
+  @Expose
+  private List<DctPeriodOfTime> temporalCoverage;
+
+  /** DCAT-AP 3 - Data services offered in this catalogue. */
+  @Expose
+  private List<DcatDataService> service;
+
+  /** DCAT-AP 3 - Catalogue records. */
+  @Expose
+  private List<DcatCatalogueRecord> record;
 
   /**
    * Instantiates a new odms catalogue.
@@ -1100,9 +1131,57 @@ public class OdmsCatalogue {
 */
   
   
+  public List<DcatProperty> getApplicableLegislation() {
+    return applicableLegislation;
+  }
+
+  public void setApplicableLegislation(List<DcatProperty> applicableLegislation) {
+    this.applicableLegislation = applicableLegislation;
+  }
+
+  public FoafAgent getCreator() {
+    return creator;
+  }
+
+  public void setCreator(FoafAgent creator) {
+    this.creator = creator;
+  }
+
+  public List<DctLocation> getGeographicalCoverage() {
+    return geographicalCoverage;
+  }
+
+  public void setGeographicalCoverage(List<DctLocation> geographicalCoverage) {
+    this.geographicalCoverage = geographicalCoverage;
+  }
+
+  public List<DctPeriodOfTime> getTemporalCoverage() {
+    return temporalCoverage;
+  }
+
+  public void setTemporalCoverage(List<DctPeriodOfTime> temporalCoverage) {
+    this.temporalCoverage = temporalCoverage;
+  }
+
+  public List<DcatDataService> getService() {
+    return service;
+  }
+
+  public void setService(List<DcatDataService> service) {
+    this.service = service;
+  }
+
+  public List<DcatCatalogueRecord> getRecord() {
+    return record;
+  }
+
+  public void setRecord(List<DcatCatalogueRecord> record) {
+    this.record = record;
+  }
+
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.lang.Object#toString()
    */
   @Override

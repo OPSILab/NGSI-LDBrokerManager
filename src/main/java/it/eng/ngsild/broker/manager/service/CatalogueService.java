@@ -1,37 +1,48 @@
 package it.eng.ngsild.broker.manager.service;
 
+import com.google.gson.reflect.TypeToken;
+import it.eng.idra.beans.dcat.DcatDataService;
+import it.eng.idra.beans.dcat.DcatDataset;
+import it.eng.idra.beans.dcat.DcatDatasetSeries;
+import it.eng.idra.beans.dcat.DcatDistribution;
+import it.eng.idra.beans.dcat.DcatProperty;
+import it.eng.idra.beans.dcat.DctLocation;
+import it.eng.idra.beans.dcat.DctPeriodOfTime;
+import it.eng.idra.beans.dcat.DctStandard;
+import it.eng.idra.beans.dcat.FoafAgent;
+import it.eng.idra.beans.dcat.Relationship;
+import it.eng.idra.beans.dcat.SkosConceptSubject;
+import it.eng.idra.beans.dcat.SkosConceptTheme;
+import it.eng.idra.beans.dcat.SkosPrefLabel;
+import it.eng.idra.beans.dcat.VcardOrganization;
+import it.eng.idra.beans.odms.OdmsCatalogue;
+import it.eng.idra.utils.GsonUtil;
+import it.eng.idra.utils.restclient.RestClient;
+import it.eng.idra.utils.restclient.RestClientImpl;
+import it.eng.ngsild.broker.manager.model.Configurations;
+import java.lang.reflect.Type;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import javax.ws.rs.core.MediaType;
 import org.apache.http.HttpResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import it.eng.idra.beans.dcat.DcatDataset;
-import it.eng.idra.beans.dcat.DcatDistribution;
-import it.eng.idra.beans.dcat.DcatProperty;
-import it.eng.idra.beans.dcat.FoafAgent;
-import it.eng.idra.beans.dcat.SkosConceptTheme;
-import it.eng.idra.beans.dcat.SkosPrefLabel;
-import it.eng.idra.beans.dcat.VcardOrganization;
-import it.eng.idra.beans.odms.OdmsCatalogue;
-import it.eng.idra.utils.restclient.RestClient;
-import it.eng.idra.utils.restclient.RestClientImpl;
-import it.eng.ngsild.broker.manager.model.Configurations;
 
 
 @Service
@@ -39,6 +50,9 @@ public class CatalogueService  {
 	
     /** The logger. */
 	private static Logger logger = LogManager.getLogger(CatalogueService.class);
+	private static final Type DCAT_DATASET_LIST_TYPE = new TypeToken<List<DcatDataset>>() {
+	}.getType();
+  private static final int DATASET_PAGE_SIZE = 1000;
 
 	public CatalogueService() {
 	}
@@ -59,7 +73,7 @@ public class CatalogueService  {
 	public int addCatalogueInCb(Configurations config) throws Exception {
 		
 		String nodeId = config.getCatalogueId();
-		String urlCB = config.getContextBrokerUrl() + "/ngsi-ld/v1/";
+		String urlCB = buildContextBrokerApiBase(config.getContextBrokerUrl());
 		
 	      ArrayList<String> allDatasets = new ArrayList<String>();
 	      ArrayList<String> allEntities = new ArrayList<String>();
@@ -71,14 +85,9 @@ public class CatalogueService  {
 	    	      .getForObject(idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId, OdmsCatalogue.class);
 	      logger.info("CATALOGUE NAME: " + node.getName());
 
-	      // I get the datasets through Idra API
-	      ResponseEntity<String> resultDatasets = restTemplate.getForEntity(idraBasePath + "/Idra/api/v1/" 
-	      + "/client/catalogues/" + nodeId + "/datasets", String.class);
-	      ObjectMapper objectMapper = new ObjectMapper();
-	      JsonNode jsonNode = objectMapper.readTree(resultDatasets.getBody());
-	      
-	      DcatDataset[] datasetsList = objectMapper.readValue(jsonNode.get("results"), DcatDataset[].class);
-	      List<DcatDataset> datasets = Arrays.asList(datasetsList);
+	      // I get all datasets through Idra API (paginated)
+	      List<DcatDataset> datasets = getAllCatalogueDatasets(restTemplate, nodeId);
+	      logger.info("Datasets collected for federation: " + datasets.size());
 
 	      // ADDING DATASETS
 	      for (DcatDataset dataset : datasets) {
@@ -108,7 +117,7 @@ public class CatalogueService  {
 	          
 	            // ADDING AGENT CREATOR
 	            String type = "AgentDCAT-AP";
-	            String agent = creator.getName().getValue();
+	            String agent = firstValue(creator.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
 		            + "\"name\": { " 
@@ -145,7 +154,7 @@ public class CatalogueService  {
 	          
 	            // ADDING AGENT PUBLISHER
 	            String type = "AgentDCAT-AP";
-	            String agent = publisher.getName().getValue();
+	            String agent = firstValue(publisher.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
 	                + "\"name\": { " 
@@ -182,7 +191,7 @@ public class CatalogueService  {
 	          
 	            // ADDING AGENT RIGHTS HOLDER
 	            String type = "AgentDCAT-AP";
-	            String agent = holder.getName().getValue();
+	            String agent = firstValue(holder.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
 	                + "\"name\": { " 
@@ -283,11 +292,11 @@ public class CatalogueService  {
 	                + " }, "
 	                + "\"accessUrl\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": [ \"" + d.getAccessURL().getValue() +  "\" ]" 
+	                + "\"value\": [ \"" + d.getAccessUrl().getValue() +  "\" ]" 
 	                + " },"
 	                + "\"downloadURL\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": [ \"" + d.getDownloadURL().getValue() + "\" ]" 
+	                + "\"value\": [ \"" + d.getDownloadUrl().getValue() + "\" ]" 
 	                + " },"
 	                + "\"license\": { "
 	                + "\"type\": \"Property\","
@@ -345,11 +354,11 @@ public class CatalogueService  {
 
 	          String creator = "";
 	          if (dataset.getCreator() != null) {
-	            creator = dataset.getCreator().getName().getValue();
+	            creator = firstValue(dataset.getCreator().getName());
 	          }
 	          String publisher = "";
 	          if (dataset.getPublisher() != null) {
-	            publisher = dataset.getPublisher().getName().getValue();
+	            publisher = firstValue(dataset.getPublisher().getName());
 	          }
 	          
 	          ArrayList<String> contacts = new ArrayList<String>();
@@ -420,9 +429,13 @@ public class CatalogueService  {
 //	          }
 	          String startDate = "";
 	          String endDate = "";
-	          if (dataset.getTemporalCoverage() != null) {
-	        	  startDate = dataset.getTemporalCoverage().getStartDate().getValue();
-	        	  endDate = dataset.getTemporalCoverage().getEndDate().getValue();
+	          if (dataset.getTemporalCoverage() != null && !dataset.getTemporalCoverage().isEmpty()) {
+	        	  if (dataset.getTemporalCoverage().get(0).getStartDate() != null) {
+	        		  startDate = dataset.getTemporalCoverage().get(0).getStartDate().getValue();
+	        	  }
+	        	  if (dataset.getTemporalCoverage().get(0).getEndDate() != null) {
+	        		  endDate = dataset.getTemporalCoverage().get(0).getEndDate().getValue();
+	        	  }
 	          }
 	          String version = "";
 	          if (dataset.getVersion() != null) {
@@ -641,8 +654,25 @@ public class CatalogueService  {
 	        if (!allEntities.contains(data)) {
 	          allEntities.add(data);
 	        }
-	        
-	        
+
+	        // DCAT-AP 3: add creator agent for catalogue if present
+	        if (node.getCreator() != null) {
+	          FoafAgent catCreator = node.getCreator();
+	          if (catCreator.getIdentifier() != null && catCreator.getIdentifier().getValue() != null) {
+	            String creatorId = catCreator.getIdentifier().getValue().replaceAll("[^a-zA-Z0-9]", "");
+	            String creatorUrn = "urn:ngsi-ld:id:" + creatorId;
+	            String creatorName = firstValue(catCreator.getName());
+	            String creatorType = catCreator.getType() != null ? catCreator.getType().getValue() : "";
+	            String creatorData = "{ \"id\": \"" + creatorUrn + "\", \"type\": \"AgentDCAT-AP\","
+	                + "\"name\": { \"type\": \"Property\", \"value\": \"" + creatorName + "\" },"
+	                + "\"agentType\": { \"type\": \"Property\", \"value\": \"" + creatorType + "\" }"
+	                + " }";
+	            if (!allEntities.contains(creatorData)) {
+	              allEntities.add(creatorData);
+	            }
+	          }
+	        }
+
 	      // POST CREATE request in BATCH
 	      int status = 200;
 	      api = urlCB + "entityOperations/create";
@@ -671,7 +701,7 @@ public class CatalogueService  {
 	  public int deleteCatalogueFromCb(Configurations config) throws MalformedURLException, Exception {
 		  
 		  String nodeId = config.getCatalogueId();
-		  String urlCB = config.getContextBrokerUrl() + "/ngsi-ld/v1/";
+		  String urlCB = buildContextBrokerApiBase(config.getContextBrokerUrl());
 	      
 	      // I get the Catalogue through Idra API
 	      RestTemplate restTemplate = new RestTemplate();
@@ -683,14 +713,9 @@ public class CatalogueService  {
 	    	      .getForObject(idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId, OdmsCatalogue.class);
 	      logger.info("CATALOGUE NAME to delete: " + node.getName());
 
-	      // I get the Datasets through Idra API
-	      ResponseEntity<String> resultDatasets = restTemplate.getForEntity(idraBasePath + "/Idra/api/v1/" 
-	      + "/client/catalogues/" + nodeId + "/datasets", String.class);
-	      ObjectMapper objectMapper = new ObjectMapper();
-	      JsonNode jsonNode = objectMapper.readTree(resultDatasets.getBody());
-
-	      DcatDataset[] datasetsList = objectMapper.readValue(jsonNode.get("results"), DcatDataset[].class);
-	      List<DcatDataset> datasets = Arrays.asList(datasetsList);
+	      // I get all datasets through Idra API (paginated)
+	      List<DcatDataset> datasets = getAllCatalogueDatasets(restTemplate, nodeId);
+	      logger.info("Datasets collected for deletion: " + datasets.size());
 
 	      // DELETING
 	      ArrayList<String> listId = new ArrayList<String>();
@@ -763,6 +788,7 @@ public class CatalogueService  {
 	      String data =  listId.toString();
 	      String api = urlCB + "entityOperations/delete";
 	      int status = 200;
+	      logger.info("Entity IDs queued for deletion from CB: " + listId.size());
 	      if (listId.size() > 200) {
 	    	
 	        status = postRequestWithCheck(listId, api, 200);
@@ -826,6 +852,117 @@ public class CatalogueService  {
 	    }
 	    return status;
 	  }	
+	  
+	  private String firstValue(List<DcatProperty> properties) {
+	    if (properties == null || properties.isEmpty() || properties.get(0) == null
+	        || properties.get(0).getValue() == null) {
+	      return "";
+	    }
+	    return properties.get(0).getValue();
+	  }
+
+	  private List<DcatDataset> parseDatasetsFromResponse(String responseBody) throws Exception {
+	    if (responseBody == null || responseBody.trim().isEmpty()) {
+	      return new ArrayList<DcatDataset>();
+	    }
+	    JSONObject payload = new JSONObject(responseBody);
+	    JSONArray results = payload.optJSONArray("results");
+	    if (results == null) {
+	      return new ArrayList<DcatDataset>();
+	    }
+	    return GsonUtil.json2Obj(results.toString(), DCAT_DATASET_LIST_TYPE);
+	  }
+
+	  private List<DcatDataset> getAllCatalogueDatasets(RestTemplate restTemplate, String nodeId)
+	      throws Exception {
+	    List<DcatDataset> datasets = new ArrayList<DcatDataset>();
+	    Set<String> seenDatasetIds = new HashSet<String>();
+	    int start = 0;
+
+	    while (true) {
+	      String url = idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId
+	          + "/datasets?rows=" + DATASET_PAGE_SIZE + "&start=" + start;
+	      ResponseEntity<String> resultDatasets = restTemplate.getForEntity(url, String.class);
+	      List<DcatDataset> page = parseDatasetsFromResponse(resultDatasets.getBody());
+
+	      if (page.isEmpty()) {
+	        break;
+	      }
+
+	      int pageAdded = 0;
+	      for (DcatDataset dataset : page) {
+	        if (dataset != null && dataset.getId() != null && seenDatasetIds.add(dataset.getId())) {
+	          datasets.add(dataset);
+	          pageAdded++;
+	        }
+	      }
+
+	      if (page.size() < DATASET_PAGE_SIZE || pageAdded == 0) {
+	        break;
+	      }
+	      start += DATASET_PAGE_SIZE;
+	    }
+	    return datasets;
+	  }
+
+	  private String buildContextBrokerApiBase(String rawContextBrokerUrl) {
+	    String normalizedBaseUrl = normalizeContextBrokerBaseUrl(rawContextBrokerUrl);
+	    return normalizedBaseUrl + "/ngsi-ld/v1/";
+	  }
+
+	  private String normalizeContextBrokerBaseUrl(String rawContextBrokerUrl) {
+	    if (rawContextBrokerUrl == null || rawContextBrokerUrl.trim().isEmpty()) {
+	      throw new IllegalArgumentException("Context broker URL is empty");
+	    }
+
+	    String candidate = rawContextBrokerUrl.trim();
+	    if (!candidate.startsWith("http://") && !candidate.startsWith("https://")) {
+	      candidate = "http://" + candidate;
+	    }
+
+	    URI uri = URI.create(candidate);
+	    String host = uri.getHost();
+	    int port = uri.getPort();
+	    String scheme = uri.getScheme() != null ? uri.getScheme() : "http";
+
+	    // Handle malformed host+port without colon, e.g. http://localhost1026/
+	    if (host == null) {
+	      String noScheme = candidate.replaceFirst("^https?://", "");
+	      int slashIdx = noScheme.indexOf('/');
+	      String authority = slashIdx >= 0 ? noScheme.substring(0, slashIdx) : noScheme;
+	      if (!authority.contains(":")) {
+	        int splitIndex = authority.length();
+	        while (splitIndex > 0 && Character.isDigit(authority.charAt(splitIndex - 1))) {
+	          splitIndex--;
+	        }
+	        if (splitIndex > 0 && splitIndex < authority.length()) {
+	          String fixedHost = authority.substring(0, splitIndex);
+	          String fixedPort = authority.substring(splitIndex);
+	          try {
+	            int parsedPort = Integer.parseInt(fixedPort);
+	            if (parsedPort > 0 && parsedPort <= 65535) {
+	              host = fixedHost;
+	              port = parsedPort;
+	            }
+	          } catch (NumberFormatException e) {
+	            // Keep original candidate; validation below will fail with a clear message.
+	          }
+	        }
+	      }
+	    }
+
+	    if (host == null || host.trim().isEmpty()) {
+	      throw new IllegalArgumentException(
+	          "Invalid context broker URL: " + rawContextBrokerUrl);
+	    }
+
+	    StringBuilder normalized = new StringBuilder();
+	    normalized.append(scheme).append("://").append(host);
+	    if (port > 0) {
+	      normalized.append(":").append(port);
+	    }
+	    return normalized.toString();
+	  }
 	  
 	
 	  

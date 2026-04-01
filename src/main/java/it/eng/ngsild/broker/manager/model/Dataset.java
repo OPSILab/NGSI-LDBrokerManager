@@ -108,6 +108,12 @@ public class Dataset {
 	public String[] versionNotes;
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public String[] wasGeneratedBy;
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public String[] applicableLegislation;
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public String[] HVDCategory;
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public String[] inSeries;
 
 	public Dataset() {
 
@@ -122,7 +128,7 @@ public class Dataset {
 			String[] qualifiedAttribution, String[] qualifiedRelation, String[] relatedResource, DateTime releaseDate,
 			String[] sample, String seeAlso, String source, GeoProperty spatial, String[] temporalResolution,
 			String[] theme, String title, DateTime updateDate, String version, String[] versionNotes,
-			String[] wasGeneratedBy) {
+			String[] wasGeneratedBy, String[] applicableLegislation, String[] HVDCategory, String[] inSeries) {
 		super();
 		this.id = id;
 		this.type = type;
@@ -167,6 +173,9 @@ public class Dataset {
 		this.version = version;
 		this.versionNotes = versionNotes;
 		this.wasGeneratedBy = wasGeneratedBy;
+		this.applicableLegislation = applicableLegislation;
+		this.HVDCategory = HVDCategory;
+		this.inSeries = inSeries;
 	}
 
 	@Override
@@ -538,13 +547,44 @@ public class Dataset {
 
 			}
 
+			String[] applicableLegislation = null;
+			if (dataset.get("applicableLegislation") != null && dataset.get("applicableLegislation").isArray()) {
+				applicableLegislation = new String[(dataset.get("applicableLegislation").size())];
+				int i = 0;
+				for (JsonNode c : dataset.get("applicableLegislation")) {
+					applicableLegislation[i] = c.textValue();
+					i++;
+				}
+			}
+
+			String[] HVDCategory = null;
+			if (dataset.get("HVDCategory") != null && dataset.get("HVDCategory").isArray()) {
+				HVDCategory = new String[(dataset.get("HVDCategory").size())];
+				int i = 0;
+				for (JsonNode c : dataset.get("HVDCategory")) {
+					HVDCategory[i] = c.textValue();
+					i++;
+				}
+			}
+
+			String[] inSeries = null;
+			if (dataset.get("inSeries") != null && dataset.get("inSeries").isArray()) {
+				inSeries = new String[(dataset.get("inSeries").size())];
+				int i = 0;
+				for (JsonNode c : dataset.get("inSeries")) {
+					inSeries[i] = c.textValue();
+					i++;
+				}
+			}
+
 			// create dataset Object
 			Dataset datasetNgsi = new Dataset(id, type, accessRights, alternateName, contactPoint, creator,
 					dataProvider, datasetDescription, datasetDistribution, datasetSource, datasetType, dateCreated,
 					dateModified, description, documentation, frequency, hasVersion, identifier, isReferencedBy,
 					isVersionOf, keyword, landingPage, language, name, otherIdentifier, owner, provenance, publisher,
 					qualifiedAttribution, qualifiedRelation, relatedResource, releaseDate, sample, seeAlso, source,
-					spatial, temporalResolution, theme, title, updateDate, version, versionNotes, wasGeneratedBy);
+					spatial, temporalResolution, theme, title, updateDate, version, versionNotes, wasGeneratedBy,
+					applicableLegislation, HVDCategory, inSeries);
 
 			System.out.println(datasetNgsi);
 			ObjectMapper mapper = new ObjectMapper();
