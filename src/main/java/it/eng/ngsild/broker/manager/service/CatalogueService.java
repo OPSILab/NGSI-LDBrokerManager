@@ -4,7 +4,9 @@ import com.google.gson.reflect.TypeToken;
 import it.eng.idra.beans.dcat.DcatDataService;
 import it.eng.idra.beans.dcat.DcatDataset;
 import it.eng.idra.beans.dcat.DcatDatasetSeries;
+import it.eng.idra.beans.dcat.DcatDetails;
 import it.eng.idra.beans.dcat.DcatDistribution;
+import it.eng.idra.beans.dcat.DcatKeyword;
 import it.eng.idra.beans.dcat.DcatProperty;
 import it.eng.idra.beans.dcat.DctLocation;
 import it.eng.idra.beans.dcat.DctPeriodOfTime;
@@ -27,9 +29,11 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.TimeZone;
 import javax.ws.rs.core.MediaType;
 import org.apache.http.HttpResponse;
@@ -247,10 +251,44 @@ public class CatalogueService  {
 	          //if (status != 200) {
 	            
 	            String typeDis = "DistributionDCAT-AP";
-	            
-	            String titleDis = titleD.replaceAll("[^a-zA-Z0-9]", " ");
 
+	            String titleDis = titleD.replaceAll("[^a-zA-Z0-9]", " ");
 	            String descr = des.replaceAll("[^a-zA-Z0-9]", " ");
+
+	            // Build multilingual title/description for distribution
+	            List<DcatDetails> disDetails = d.getDistributionDetails();
+	            String titleDisJson;
+	            String descrDisJson;
+	            if (disDetails != null && !disDetails.isEmpty()) {
+	                StringBuilder titleMap = new StringBuilder();
+	                StringBuilder descMap = new StringBuilder();
+	                boolean firstT = true, firstD2 = true;
+	                for (DcatDetails det : disDetails) {
+	                    String lang = det.getLanguage();
+	                    if (lang == null || lang.isBlank()) continue;
+	                    String tv = det.getTitle();
+	                    if (tv != null && !tv.isBlank()) {
+	                        if (!firstT) titleMap.append(",");
+	                        titleMap.append("\"").append(lang).append("\":\"").append(tv.replaceAll("\"", "").replaceAll("'", " ")).append("\"");
+	                        firstT = false;
+	                    }
+	                    String dv = det.getDescription();
+	                    if (dv != null && !dv.isBlank()) {
+	                        if (!firstD2) descMap.append(",");
+	                        descMap.append("\"").append(lang).append("\":\"").append(dv.replaceAll("[^a-zA-Z0-9 ]", " ")).append("\"");
+	                        firstD2 = false;
+	                    }
+	                }
+	                titleDisJson = firstT
+	                    ? "\"title\":{\"type\":\"Property\",\"value\":[\"" + titleDis + "\"]},"
+	                    : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
+	                descrDisJson = firstD2
+	                    ? "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},"
+	                    : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
+	            } else {
+	                titleDisJson = "\"title\":{\"type\":\"Property\",\"value\":[\"" + titleDis + "\"]},";
+	                descrDisJson = "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},";
+	            }
 
 	            ArrayList<String> languageList = new ArrayList<String>();
 	            for(DcatProperty lang: d.getLanguage()) {
@@ -270,26 +308,19 @@ public class CatalogueService  {
 
 	            // aggiungere dateCreated e dateModified come TIMESTAMP della Entity?
 	            
+	            String releaseDateDisJson = "";
+	            if (d.getReleaseDate() != null && d.getReleaseDate().getValue() != null && !d.getReleaseDate().getValue().isEmpty()) {
+	                releaseDateDisJson = "\"releaseDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + d.getReleaseDate().getValue() + "\"}}, ";
+	            }
+	            String modifiedDateDisJson = "";
+	            if (d.getUpdateDate() != null && d.getUpdateDate().getValue() != null && !d.getUpdateDate().getValue().isEmpty()) {
+	                modifiedDateDisJson = "\"modifiedDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + d.getUpdateDate().getValue() + "\"}}, ";
+	            }
 	            String dataDis = "{ \"id\": \"" + idDis + "\", \"type\": \"" + typeDis + "\","
-	                + "\"description\": { " 
-	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + descr + "\" }," 
-	                + "\"title\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": [ \"" + titleDis + "\" ]" 
-	                + " },"
-	                + "\"releaseDate\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": { "
-	                + "\"@type\": \"DateTime\","
-	                + "\"@value\": \"" + d.getReleaseDate().getValue() + "\"  }"
-	                + " }, "
-	                + "\"modifiedDate\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": { "
-	                + "\"@type\": \"DateTime\","
-	                + "\"@value\": \"" + d.getUpdateDate().getValue() + "\"  }"
-	                + " }, "
+	                + descrDisJson
+	                + titleDisJson
+	                + releaseDateDisJson
+	                + modifiedDateDisJson
 	                + "\"accessUrl\": { "
 	                + "\"type\": \"Property\","
 	                + "\"value\": [ \"" + d.getAccessUrl().getValue() +  "\" ]" 
@@ -346,11 +377,46 @@ public class CatalogueService  {
 	          // ADDING DATASET
 	          String des = dataset.getDescription().getValue();
 	          String descr = des.replaceAll("[^a-zA-Z0-9]", " ");
-	          
+
 	          String t = dataset.getTitle().getValue();
 	          //String title = t.replaceAll("[^a-zA-Z0-9]", " ");
 	          String title = t.replaceAll("\"", "");
-	          title = title.replaceAll("\'", " ");
+	          title = title.replaceAll("'", " ");
+
+	          // Build multilingual title/description for dataset
+	          List<DcatDetails> dsDetails = dataset.getDatasetDetails();
+	          String titleDsJson;
+	          String descrDsJson;
+	          if (dsDetails != null && !dsDetails.isEmpty()) {
+	              StringBuilder titleMap = new StringBuilder();
+	              StringBuilder descMap = new StringBuilder();
+	              boolean firstT = true, firstD2 = true;
+	              for (DcatDetails det : dsDetails) {
+	                  String lang = det.getLanguage();
+	                  if (lang == null || lang.isBlank()) continue;
+	                  String tv = det.getTitle();
+	                  if (tv != null && !tv.isBlank()) {
+	                      if (!firstT) titleMap.append(",");
+	                      titleMap.append("\"").append(lang).append("\":\"").append(tv.replaceAll("\"", "").replaceAll("'", " ")).append("\"");
+	                      firstT = false;
+	                  }
+	                  String dv = det.getDescription();
+	                  if (dv != null && !dv.isBlank()) {
+	                      if (!firstD2) descMap.append(",");
+	                      descMap.append("\"").append(lang).append("\":\"").append(dv.replaceAll("[^a-zA-Z0-9 ]", " ")).append("\"");
+	                      firstD2 = false;
+	                  }
+	              }
+	              titleDsJson = firstT
+	                  ? "\"title\":{\"type\":\"Property\",\"value\":[\"" + title + "\"]},"
+	                  : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
+	              descrDsJson = firstD2
+	                  ? "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},"
+	                  : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
+	          } else {
+	              titleDsJson = "\"title\":{\"type\":\"Property\",\"value\":[\"" + title + "\"]},";
+	              descrDsJson = "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},";
+	          }
 
 	          String creator = "";
 	          if (dataset.getCreator() != null) {
@@ -381,14 +447,47 @@ public class CatalogueService  {
 	          if (themes.size() == 0)
 	        	  themes.add("");
 	          
-	          ArrayList<String> keywords = new ArrayList<String>();
-	          for (String keyw: dataset.getKeywords()) {
-	          	if(keyw != "")
-	          		keywords.add("\"" + keyw + "\"");
+	          // Build multilingual keywords
+	          String keywordDsJson;
+	          List<DcatKeyword> kwDetails = dataset.getKeywordDetails();
+	          if (kwDetails != null && !kwDetails.isEmpty()) {
+	              Map<String, List<String>> kwByLang = new LinkedHashMap<>();
+	              for (DcatKeyword kw : kwDetails) {
+	                  String val = kw.getValue();
+	                  if (val == null || val.isBlank()) continue;
+	                  String lang = (kw.getLanguage() != null && !kw.getLanguage().isBlank())
+	                                ? kw.getLanguage() : "und";
+	                  kwByLang.computeIfAbsent(lang, k -> new ArrayList<>()).add(val);
+	              }
+	              if (!kwByLang.isEmpty()) {
+	                  StringBuilder kwMap = new StringBuilder();
+	                  boolean firstLang = true;
+	                  for (Map.Entry<String, List<String>> entry : kwByLang.entrySet()) {
+	                      if (!firstLang) kwMap.append(",");
+	                      kwMap.append("\"").append(entry.getKey()).append("\":[")
+	                           .append(entry.getValue().stream()
+	                               .map(v -> "\"" + v + "\"")
+	                               .collect(Collectors.joining(",")))
+	                           .append("]");
+	                      firstLang = false;
+	                  }
+	                  keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":{" + kwMap + "}},";
+	              } else {
+	                  ArrayList<String> keywords = new ArrayList<>();
+	                  for (String keyw : dataset.getKeywords()) {
+	                      if (!keyw.isEmpty()) keywords.add("\"" + keyw + "\"");
+	                  }
+	                  if (keywords.isEmpty()) keywords.add("\"\"");
+	                  keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
+	              }
+	          } else {
+	              ArrayList<String> keywords = new ArrayList<>();
+	              for (String keyw : dataset.getKeywords()) {
+	                  if (!keyw.isEmpty()) keywords.add("\"" + keyw + "\"");
+	              }
+	              if (keywords.isEmpty()) keywords.add("\"\"");
+	              keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
 	          }
-	          if (keywords.size() == 0)
-	        	  keywords.add("");
-	          
 	          ArrayList<String> documentation = new ArrayList<String>();
 	          for (DcatProperty doc: dataset.getDocumentation()) {
 	          	if(doc.getValue() != "")
@@ -451,18 +550,25 @@ public class CatalogueService  {
 	          // dateModified Timestamp of the last modification of the entity. 
 	          // This will usually be allocated by the storage platform
 	   
+	          String temporalJson = "";
+	          if (!startDate.isEmpty() || !endDate.isEmpty()) {
+	              temporalJson = "\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":\"" + startDate + "\"},{\"@type\":\"DateTime\",\"@value\":\"" + endDate + "\"}]}, ";
+	          }
+	          String dateCreatedJson = "";
+	          if (dataset.getReleaseDate() != null && dataset.getReleaseDate().getValue() != null && !dataset.getReleaseDate().getValue().isEmpty()) {
+	              dateCreatedJson = "\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + dataset.getReleaseDate().getValue() + "\"}}, ";
+	          }
+	          String dateModifiedJson = "";
+	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null && !dataset.getUpdateDate().getValue().isEmpty()) {
+	              dateModifiedJson = "\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + dataset.getUpdateDate().getValue() + "\"}}, ";
+	          }
 	          String typeDs = "Dataset";
 	          String dataDs = "{ \"id\": \"" + idDs + "\", \"type\": \"" + typeDs + "\","
-	              + "\"description\": { " 							
-	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + descr + "\" },"
+	              + descrDsJson
 	              + "\"alternateName\": { " 
 	              + "\"type\": \"Property\","
 	              + "\"value\": \"\" },"
-	              + "\"title\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": [ \"" + title + "\" ]" 
-	              + " },"
+	              + titleDsJson
 	              + "\"landingPage\": { "
 	              + "\"type\": \"Property\","
 	              + "\"value\": [ \"" + dataset.getLandingPage().getValue() + "\" ]" 
@@ -475,10 +581,7 @@ public class CatalogueService  {
 	              + "\"type\": \"Property\","
 	              + "\"value\": " + contacts.toString() 		
 	              + " },"
-	              + "\"keyword\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + keywords.toString() 		
-	              + " },"
+	              + keywordDsJson
 	              + "\"theme\": { "
 	              + "\"type\": \"Property\","
 	              + "\"value\": " + themes.toString() 			
@@ -507,33 +610,15 @@ public class CatalogueService  {
 	              + "\"type\": \"Property\","
 	              + "\"value\": " + versionNotes.toString()    
 	              + " },"
-	              + "\"version\": { " 							
+	              + "\"version\": { "
 	              + "\"type\": \"Property\","
 	              + "\"value\": \"" + version + "\" },"
-	              + "\"temporal\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": [ { "
-	              + "\"@type\": \"DateTime\","
-	              + "\"@value\": \"" + startDate + "\"  },"
-	              + "{ "
-	    	      + "\"@type\": \"DateTime\","
-	    	      + "\"@value\": \"" + endDate + "\" "
-	              + " } ] }, "
+	              + temporalJson
 	              + "\"accessRights\": { " 
 	              + "\"type\": \"Property\","
 	              + "\"value\": \"" + dataset.getAccessRights().getValue() + "\" },"
-	              + "\"dateCreated\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": { "
-	              + "\"@type\": \"DateTime\","
-	              + "\"@value\": \"" + dataset.getReleaseDate().getValue() + "\"  }"
-	              + " }, "
-	              + "\"dateModified\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": { "
-	              + "\"@type\": \"DateTime\","
-	              + "\"@value\": \"" + dataset.getUpdateDate().getValue() + "\"  }"
-	              + " }, "
+	              + dateCreatedJson
+	              + dateModifiedJson
 	              + "\"publisher\": { " 
 	              + "\"type\": \"Property\","
 	              + "\"value\": \"" + publisher + "\" },"
@@ -682,6 +767,7 @@ public class CatalogueService  {
 	        logger.info("STATUS CREATE CATALOGUE IN THE CB: " + status);
 	      } else {
 	    	// POST CREATE BATCH 
+			logger.info("PAYLOAD TO CB (" + allEntities.size() + " entities): " + allEntities.toString());
 	        status = restRequest(api, allEntities.toString(), "POST");
 	        logger.info("STATUS CREATE CATALOGUE IN THE CB: " + status);
 	      }
@@ -986,6 +1072,9 @@ public class CatalogueService  {
 			      response = client.sendDeleteRequest(api, headers); 
 			}
 		    int status = client.getStatus(response);
+		    if (status != 200 && status != 201 && status != 204) {
+		        try { logger.warn("CB RESPONSE BODY (" + status + "): " + client.getHttpResponseBody(response)); } catch (Exception ex) { logger.warn("Could not read CB response body: " + ex.getMessage()); }
+		    }
 		    return status;
 	}
 	
