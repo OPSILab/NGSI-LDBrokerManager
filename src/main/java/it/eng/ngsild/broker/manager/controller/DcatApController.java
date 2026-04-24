@@ -33,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
@@ -86,6 +88,9 @@ import it.eng.ngsild.broker.manager.model.DistributionDcatAp;
 @RestController
 @RequestMapping(value = "/api")
 public class DcatApController {
+
+	private static final Logger log = LoggerFactory.getLogger(DcatApController.class);
+
 	@Value("${contexBroker.host_orion}")
 	private String hostContextBroker;
 	
@@ -168,10 +173,10 @@ public class DcatApController {
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		}
     }
 	//@RequestMapping(value = "/agentdcatap", method = RequestMethod.POST, consumes="application/json")
@@ -226,7 +231,7 @@ public class DcatApController {
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = agentNgsi.convertToNgsi(node);
-			System.out.println(entityString);
+			log.debug("Agent NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
 		
@@ -235,10 +240,10 @@ public class DcatApController {
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -341,22 +346,22 @@ public class DcatApController {
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = catalogueNgsi.convertToNgsi(node);
-			System.out.println(entityString);
+			log.debug("Catalogue NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
-			
+
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
-			
-			
-			
-			
+
+
+
+
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -430,19 +435,19 @@ public class DcatApController {
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = catalogueNgsi.convertToNgsi(node);
-			System.out.println(entityString);
+			log.debug("CatalogueRecord NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
-		
+
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
-			
+
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -526,7 +531,7 @@ public class DcatApController {
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = dataserviceNgsi.convertToNgsi(node);
-			System.out.println(entityString);
+			log.debug("DataService NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
 		
@@ -535,10 +540,10 @@ public class DcatApController {
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -580,7 +585,7 @@ public class DcatApController {
 		try {
 			node = map.readTree(agent.toString());
 			String entityString = distributionNgsi.convertToNgsi(node);
-			System.out.println(entityString);
+			log.debug("Distribution NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
 		
@@ -589,10 +594,10 @@ public class DcatApController {
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
 		     return new ResponseEntity<String> (response.toString(), null, response.getStatusCode());
 		} catch (HttpClientErrorException e) {
-			System.out.println(e.getMessage());
+			log.warn("HTTP client error: {}", e.getMessage(), e);
 			// handle exception here
 			return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
-		
+
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -644,14 +649,14 @@ public List<Object> getAllDataset() {
 		String contexBrokerEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		ResponseEntity<Object[]> response;
 		do {
-			System.out.println("hostContextBroker: " + hostContextBroker);
-			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			log.debug("hostContextBroker: {}", hostContextBroker);
+			log.debug("contexBrokerEndpoint: {}", contexBrokerEndpoint);
 			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=Dataset&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
 			List<Object> responseArr = Arrays.asList(response.getBody());
 			dataset.addAll(responseArr);
-			offset = offset + limit; 
+			offset = offset + limit;
 		} while (!Arrays.asList(response.getBody()).isEmpty());
-		System.out.println(dataset);
+		log.debug("Retrieved datasets: {}", dataset);
 		return dataset;
     }
 //@GetMapping("/cataloguedcatap")
@@ -663,14 +668,14 @@ public List<Object> getAllCataloguedcatap() {
 		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		ResponseEntity<Object[]> response;
 		do {
-			System.out.println("hostContextBroker: " + hostContextBroker);
-			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			log.debug("hostContextBroker: {}", hostContextBroker);
+			log.debug("contexBrokerEndpoint: {}", contexBrokerEndpoint);
 			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=CatalogueDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
 			List<Object> responseArr = Arrays.asList(response.getBody());
 			dataset.addAll(responseArr);
-			offset = offset + limit; 
+			offset = offset + limit;
 		} while (!Arrays.asList(response.getBody()).isEmpty());
-		System.out.println(dataset);
+		log.debug("Retrieved catalogues: {}", dataset);
 		return dataset;
     }
 //@GetMapping("/cataloguerecorddcatap")
@@ -682,14 +687,14 @@ public List<Object> getAllCatalogueRecordDcatap() {
 		String contexBrokerEndpoint = "http://" + hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
 		ResponseEntity<Object[]> response;
 		do {
-			System.out.println("hostContextBroker: " + hostContextBroker);
-			System.out.println("contexBrokerEndpoint: " + contexBrokerEndpoint);
+			log.debug("hostContextBroker: {}", hostContextBroker);
+			log.debug("contexBrokerEndpoint: {}", contexBrokerEndpoint);
 			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=CatalogueRecordDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
 			List<Object> responseArr = Arrays.asList(response.getBody());
 			dataset.addAll(responseArr);
-			offset = offset + limit; 
+			offset = offset + limit;
 		} while (!Arrays.asList(response.getBody()).isEmpty());
-		System.out.println(dataset);
+		log.debug("Retrieved catalogue records: {}", dataset);
 		return dataset;
     }
 
@@ -793,11 +798,11 @@ public void deleteEntity(@PathVariable("id") String datasetId) {
 		final HttpEntity<String> entity = new HttpEntity<String>( headers);
 		restTemplate.delete(contexBrokerEndpoint);
 	} catch (HttpClientErrorException e) {
-		System.out.println(e.getMessage());
+		log.warn("HTTP client error on delete: {}", e.getMessage(), e);
 		// handle exception here
 		//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
 	}
-	
+
 }
 /*public void removeEmptyAndNullFields(Object object,  String entityId) {
     if (object instanceof JSONArray) {
@@ -823,7 +828,7 @@ public void deleteEntity(@PathVariable("id") String datasetId) {
 }*/
 
 public void removeEmptyAndNullFields(Object object, String entityId) {
-	System.out.println(object.toString());
+	log.debug("removeEmptyAndNullFields called on: {}", object);
     if (object instanceof JSONArray) {
         JSONArray array = (JSONArray) object;
         for (int i = 0; i < array.length(); ++i) {
@@ -845,7 +850,7 @@ public void removeEmptyAndNullFields(Object object, String entityId) {
 
                     // Se è "spatial", esegui DELETE
                     if ("spatial".equals(key)) {
-                    	System.out.println("sono qui");
+                    	log.debug("Deleting spatial attribute for entity: {}", entityId);
                         deleteSpatialAttribute(entityId);
                     }
 
@@ -858,7 +863,7 @@ public void removeEmptyAndNullFields(Object object, String entityId) {
                 }
 
             } catch (Exception e) {
-                // Gestione silenziosa degli errori
+                log.warn("Error processing field in removeEmptyAndNullFields: {}", e.getMessage(), e);
             }
         }
     }
@@ -875,7 +880,7 @@ public void deleteSpatialAttribute(String entityId) {
     	restTemplate.delete(contexBrokerEndpoint);
     
     } catch (HttpClientErrorException e) {
-    	System.out.println(e.getMessage());
+    	log.warn("HTTP client error on spatial attribute delete: {}", e.getMessage(), e);
     	// handle exception here
     	//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
     }
@@ -936,7 +941,7 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 	 Dataset datasetNgsi = new Dataset();
 	    ObjectMapper map = new ObjectMapper();  
 	    JsonNode node = null;
-	    System.out.println(datasetId);
+	    log.info("Updating dataset with id: {}", datasetId);
 	    String contextBrokerAttrsEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
 	    String contextBrokerEntityEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId;
 
@@ -949,7 +954,7 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 
 	        String entityString = datasetNgsi.convertToNgsi(node);
 	        JSONObject jsonObj = new JSONObject(entityString);
-	        System.out.println("riga927" + jsonObj.toString());
+	        log.debug("Dataset JSON object: {}", jsonObj);
 
 	        Object spatial = jsonObj.has("spatial") ? jsonObj.get("spatial") : null;
 	        if (spatial == null) {
@@ -965,8 +970,8 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 	        HttpEntity<String> entity = new HttpEntity<>(jsonObj.toString(), headers);
 
 	        // PATCH update
-	        System.out.println(jsonObj.toString());
-	        System.out.println(contextBrokerAttrsEndpoint);
+	        log.debug("PATCH payload: {}", jsonObj);
+	        log.debug("PATCH endpoint: {}", contextBrokerAttrsEndpoint);
 	        String response = restTemplate.patchForObject(contextBrokerAttrsEndpoint, entity, String.class);
 
 	        // 🔍 Check if spatial is missing, then re-add it with POST
@@ -986,17 +991,17 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 
 	                    String spatialEndpoint = hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + datasetId + "/attrs";
 	                    restTemplate.postForEntity(spatialEndpoint, spatialEntity, String.class);
-	                    System.out.println("✔ Attributo 'spatial' ricreato con POST.");
+	                    log.info("Spatial attribute recreated via POST for entity: {}", datasetId);
 	                }
 	            } catch (Exception e) {
-	                System.err.println("Errore durante il controllo o il ripristino di 'spatial': " + e.getMessage());
+	                log.warn("Error checking or restoring spatial attribute: {}", e.getMessage(), e);
 	            }
 	        }
 
 	        return response;
 
 	    } catch (HttpClientErrorException e) {
-	        System.out.println(e.getMessage());
+	        log.warn("HTTP client error on dataset update: {}", e.getMessage(), e);
 	        return e.getMessage();
 	    }
 }
@@ -1031,11 +1036,11 @@ public void deleteDistribution(@PathVariable("id") String distributionId) {
 		final HttpEntity<String> entity = new HttpEntity<String>( headers);
 		restTemplate.delete(contexBrokerEndpoint);
 	} catch (HttpClientErrorException e) {
-		System.out.println(e.getMessage());
+		log.warn("HTTP client error on distribution delete: {}", e.getMessage(), e);
 		// handle exception here
 		//return new ResponseEntity<String> (e.getMessage(), null, e.getStatusCode());
 	}
-	
+
 }
 
 
@@ -1062,7 +1067,7 @@ public String updateDistribution(@PathVariable("id") String distributionId, @Req
 	DistributionDcatAp distributionNgsi = new DistributionDcatAp();
 	ObjectMapper map = new ObjectMapper();  
 	JsonNode node = null;
-	System.out.println(distributionId);
+	log.info("Updating distribution with id: {}", distributionId);
 	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + distributionId + "/attrs";
 	try {
 		try {
@@ -1079,16 +1084,16 @@ public String updateDistribution(@PathVariable("id") String distributionId, @Req
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 	
-	System.out.println(jsonObj.toString());
+	log.debug("PATCH payload: {}", jsonObj);
 		final HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);
-		System.out.println(contexBrokerEndpoint);
+		log.debug("PATCH endpoint: {}", contexBrokerEndpoint);
 		String response = restTemplate.patchForObject(contexBrokerEndpoint, entity, String.class);
 	     return response;
 	} catch (HttpClientErrorException e) {
-		System.out.println(e.getMessage());
+		log.warn("HTTP client error on distribution update: {}", e.getMessage(), e);
 		// handle exception here
 		return e.getMessage();
-	
+
 	}
 }
 

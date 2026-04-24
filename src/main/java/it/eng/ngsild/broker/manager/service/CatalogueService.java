@@ -102,7 +102,8 @@ public class CatalogueService  {
 	        }
 	        
 	        // AGENT of the DATASET
-	        if (dataset.getCreator() != null) {
+	        if (dataset.getCreator() != null && dataset.getCreator().getIdentifier() != null
+	            && dataset.getCreator().getIdentifier().getValue() != null) {
 	          FoafAgent creator = dataset.getCreator();
 //	          String identificator = creator.getId();
 	          String identificator = creator.getIdentifier().getValue();
@@ -124,14 +125,14 @@ public class CatalogueService  {
 	            String agent = firstValue(creator.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-		            + "\"name\": { " 
+		            + "\"name\": { "
 		            + "\"type\": \"Property\","
-		            + "\"value\": \"" + agent + "\" }," 
-	                + "\"agentType\": { " 
+		            + "\"value\": " + JSONObject.quote(agent) + " },"
+	                + "\"agentType\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + agentType + "\" }" 
+	                + "\"value\": " + JSONObject.quote(agentType) + " }"
 	                + " }";
-	            
+
 	            if (!allEntities.contains(data)) {
 	              allEntities.add(data);
 	            }
@@ -139,7 +140,8 @@ public class CatalogueService  {
 	         }
 	        }
 
-	        if (dataset.getPublisher() != null) {
+	        if (dataset.getPublisher() != null && dataset.getPublisher().getIdentifier() != null
+	            && dataset.getPublisher().getIdentifier().getValue() != null) {
 	          FoafAgent publisher = dataset.getPublisher();
 //	          String identificator = publisher.getId();
 	          String identificator = publisher.getIdentifier().getValue();
@@ -161,22 +163,23 @@ public class CatalogueService  {
 	            String agent = firstValue(publisher.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-	                + "\"name\": { " 
+	                + "\"name\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + agent + "\" }," 
-	                + "\"agentType\": { " 
+	                + "\"value\": " + JSONObject.quote(agent) + " },"
+	                + "\"agentType\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + agentType + "\" }" 
+	                + "\"value\": " + JSONObject.quote(agentType) + " }"
 	                + " }";
-	            
+
 	            if (!allEntities.contains(data)) {
 	              allEntities.add(data);
 	            }
-	            
-	          }       
+
+	          }
 	        }
 
-	        if (dataset.getRightsHolder() != null) {
+	        if (dataset.getRightsHolder() != null && dataset.getRightsHolder().getIdentifier() != null
+	            && dataset.getRightsHolder().getIdentifier().getValue() != null) {
 	          FoafAgent holder = dataset.getRightsHolder();
 	          
 //	          String identificator = holder.getId();
@@ -198,18 +201,18 @@ public class CatalogueService  {
 	            String agent = firstValue(holder.getName());
 	      
 	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-	                + "\"name\": { " 
+	                + "\"name\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + agent + "\" }," 
-	                + "\"agentType\": { " 
+	                + "\"value\": " + JSONObject.quote(agent) + " },"
+	                + "\"agentType\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + agentType + "\" }" 
+	                + "\"value\": " + JSONObject.quote(agentType) + " }"
 	                + " }";
-	            
+
 	            if (!allEntities.contains(data)) {
 	              allEntities.add(data);
 	            }
-			    
+
 	          }
 	        }
 	        
@@ -227,22 +230,19 @@ public class CatalogueService  {
 
 	          String identificat = d.getId();
 	          
-	          // I get the Distributions through Idra API
-	          String apiD = idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId + "/datasets/" 
-	        		  + dataset.getId() + "/distributions/" + d.getId();
-	          Map<String, String> headers = new HashMap<String, String>();
-	          headers.put("Content-Type", "application/json");
-	          RestClient client = new RestClientImpl();
-	          String returnedJson = "";
-	          HttpResponse response = client.sendGetRequest(apiD, headers);
-	          returnedJson = client.getHttpResponseBody(response);
-	          JSONObject distrib = new JSONObject(returnedJson);
-	          
-	          String format = distrib.optString("format", "");
-	          String mediaType = distrib.optString("mediaType", "");
-	          String titleD = distrib.optString("title", "");
-	          String des = distrib.optString("description", "");
-	          String stat = distrib.optString("status", ""); // a value between Completed, Deprecated, Under Development, Withdrawn 
+	          // Read distribution fields directly from the Java bean.
+	          // distrib.optString("mediaType","") was previously used via an Idra API call,
+	          // but DcatProperty fields serialize as {"value":"..."} not plain strings,
+	          // so optString always returned "". Read from d directly like the other fields.
+	          String format = (d.getFormat() != null && d.getFormat().getValue() != null)
+	              ? d.getFormat().getValue() : "";
+	          String mediaType = (d.getMediaType() != null && d.getMediaType().getValue() != null)
+	              ? d.getMediaType().getValue() : "";
+	          String titleD = (d.getTitle() != null && d.getTitle().getValue() != null)
+	              ? d.getTitle().getValue() : "";
+	          String des = (d.getDescription() != null && d.getDescription().getValue() != null)
+	              ? d.getDescription().getValue() : "";
+	          String stat = (d.getStatus() != null) ? d.getStatus().toString() : "";
 	          
 	          String idDis = "urn:ngsi-ld:DistributionDCAT-AP:id:" + identificat;
 	                
@@ -290,10 +290,12 @@ public class CatalogueService  {
 	                descrDisJson = "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},";
 	            }
 
-	            ArrayList<String> languageList = new ArrayList<String>();
-	            for(DcatProperty lang: d.getLanguage()) {
-	            	if (lang.getValue() != "")
-	            		languageList.add("\"" + lang.getValue() + "\"");
+	            // H5: use isEmpty() — != "" confronta riferimenti, non contenuto
+	            // H7: JSONArray garantisce serializzazione JSON valida
+	            JSONArray languageList = new JSONArray();
+	            for (DcatProperty lang : d.getLanguage()) {
+	                if (lang.getValue() != null && !lang.getValue().isEmpty())
+	                    languageList.put(lang.getValue());
 	            }
 	            
 	            String byteSize = "";
@@ -316,6 +318,22 @@ public class CatalogueService  {
 	            if (d.getUpdateDate() != null && d.getUpdateDate().getValue() != null && !d.getUpdateDate().getValue().isEmpty()) {
 	                modifiedDateDisJson = "\"modifiedDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + d.getUpdateDate().getValue() + "\"}}, ";
 	            }
+	            String accessUrlVal = (d.getAccessUrl() != null && d.getAccessUrl().getValue() != null)
+	            ? d.getAccessUrl().getValue() : "";
+	            String downloadUrlVal = (d.getDownloadUrl() != null && d.getDownloadUrl().getValue() != null)
+	            ? d.getDownloadUrl().getValue() : "";
+	            String licenseNameVal = (d.getLicense() != null && d.getLicense().getName() != null
+	                && d.getLicense().getName().getValue() != null)
+	            ? d.getLicense().getName().getValue() : "";
+	            String rightsVal = (d.getRights() != null && d.getRights().getValue() != null)
+	            ? d.getRights().getValue() : "";
+	            JSONArray applicableLegislationDis = new JSONArray();
+	            if (d.getApplicableLegislation() != null) {
+	                for (DcatProperty al : d.getApplicableLegislation()) {
+	                    if (al.getValue() != null && !al.getValue().isEmpty())
+	                        applicableLegislationDis.put(al.getValue());
+	                }
+	            }
 	            String dataDis = "{ \"id\": \"" + idDis + "\", \"type\": \"" + typeDis + "\","
 	                + descrDisJson
 	                + titleDisJson
@@ -323,15 +341,15 @@ public class CatalogueService  {
 	                + modifiedDateDisJson
 	                + "\"accessUrl\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": [ \"" + d.getAccessUrl().getValue() +  "\" ]" 
+	                + "\"value\": [ " + JSONObject.quote(accessUrlVal) + " ]"
 	                + " },"
 	                + "\"downloadURL\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": [ \"" + d.getDownloadUrl().getValue() + "\" ]" 
+	                + "\"value\": [ " + JSONObject.quote(downloadUrlVal) + " ]"
 	                + " },"
 	                + "\"license\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + d.getLicense().getName().getValue() + "\""
+	                + "\"value\": " + JSONObject.quote(licenseNameVal)
 	                + " },"
 	                + "\"format\": { "
 	                + "\"type\": \"Property\","
@@ -343,7 +361,7 @@ public class CatalogueService  {
 	                + " },"
 	                + "\"rights\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + d.getRights().getValue() + "\""
+	                + "\"value\": " + JSONObject.quote(rightsVal)
 	                + " },"
 	                + "\"language\": { "
 	                + "\"type\": \"Property\","
@@ -361,6 +379,10 @@ public class CatalogueService  {
 	                + "\"type\": \"Property\","
 	                + "\"value\": \"" + stat + "\""
 	                + " }"
+	                + (applicableLegislationDis.length() > 0
+	                    ? ",\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
+	                        + applicableLegislationDis.toString() + "}"
+	                    : "")
 	                + " }";
 	            	
 	            if (!allEntities.contains(dataDis)) {
@@ -427,25 +449,27 @@ public class CatalogueService  {
 	            publisher = firstValue(dataset.getPublisher().getName());
 	          }
 	          
-	          ArrayList<String> contacts = new ArrayList<String>();
-	          for (int i = 0; i < dataset.getContactPoint().size(); i++) {
-	        	VcardOrganization v = dataset.getContactPoint().get(i);
-	            contacts.add("\"" + v.getHasEmail().getValue() + "\""); 
+	          // H6 + H7: null-safe contact email, JSONArray for valid JSON
+	          JSONArray contacts = new JSONArray();
+	          for (VcardOrganization v : dataset.getContactPoint()) {
+	              if (v.getHasEmail() != null && v.getHasEmail().getValue() != null
+	                      && !v.getHasEmail().getValue().isEmpty()) {
+	                  contacts.put(v.getHasEmail().getValue());
+	              }
 	          }
 //	          if (contacts.size() == 0)
 //	        	  contacts.add("");
 	          
-	          ArrayList<String> themes = new ArrayList<String>();
-	          List<SkosConceptTheme> theme = dataset.getTheme();
-	          for(SkosConceptTheme tema: theme) {
-	            List<SkosPrefLabel> lab = tema.getPrefLabel();
-	            for (SkosPrefLabel label: lab)
-	            	if(label.getValue() != "") {
-	            		themes.add("\"" + label.getValue() + "\"");
-	            	}
+	          // H5 + H7: isEmpty() check, JSONArray serialization
+	          JSONArray themes = new JSONArray();
+	          for (SkosConceptTheme tema : dataset.getTheme()) {
+	              for (SkosPrefLabel label : tema.getPrefLabel()) {
+	                  if (label.getValue() != null && !label.getValue().isEmpty()) {
+	                      themes.put(label.getValue());
+	                  }
+	              }
 	          }
-	          if (themes.size() == 0)
-	        	  themes.add("");
+	          if (themes.length() == 0) themes.put("");
 	          
 	          // Build multilingual keywords
 	          String keywordDsJson;
@@ -488,27 +512,27 @@ public class CatalogueService  {
 	              if (keywords.isEmpty()) keywords.add("\"\"");
 	              keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
 	          }
-	          ArrayList<String> documentation = new ArrayList<String>();
-	          for (DcatProperty doc: dataset.getDocumentation()) {
-	          	if(doc.getValue() != "")
-	          		documentation.add("\"" + doc.getValue() + "\"");
+	          // H5 + H7: isEmpty() check, JSONArray serialization
+	          JSONArray documentation = new JSONArray();
+	          for (DcatProperty doc : dataset.getDocumentation()) {
+	              if (doc.getValue() != null && !doc.getValue().isEmpty())
+	                  documentation.put(doc.getValue());
 	          }
 
-	          ArrayList<String> language = new ArrayList<String>();
-	          for (DcatProperty lan: dataset.getLanguage()) {
-	          	if(lan.getValue() != "")
-	          		language.add("\"" + lan.getValue() + "\"");
+	          JSONArray language = new JSONArray();
+	          for (DcatProperty lan : dataset.getLanguage()) {
+	              if (lan.getValue() != null && !lan.getValue().isEmpty())
+	                  language.put(lan.getValue());
 	          }
-	          ArrayList<String> otherIdentifier = new ArrayList<String>();
-	          for (DcatProperty otId: dataset.getOtherIdentifier()) {
-	          	if(otId.getValue() != "") {
-	          		otherIdentifier.add("\"" + otId.getValue() + "\"");
-	          	}
+	          JSONArray otherIdentifier = new JSONArray();
+	          for (DcatProperty otId : dataset.getOtherIdentifier()) {
+	              if (otId.getValue() != null && !otId.getValue().isEmpty())
+	                  otherIdentifier.put(otId.getValue());
 	          }
-	          ArrayList<String> provenance = new ArrayList<String>();
-	          for (DcatProperty pr: dataset.getProvenance()) {
-	          	if(pr.getValue() != "")
-	          		provenance.add("\"" + pr.getValue() + "\"");
+	          JSONArray provenance = new JSONArray();
+	          for (DcatProperty pr : dataset.getProvenance()) {
+	              if (pr.getValue() != null && !pr.getValue().isEmpty())
+	                  provenance.put(pr.getValue());
 	          }
 	          String frequency = "";
 	          if (dataset.getFrequency() != null) {
@@ -540,10 +564,10 @@ public class CatalogueService  {
 	          if (dataset.getVersion() != null) {
 	        	  version = dataset.getVersion().getValue();
 	          }
-	          ArrayList<String> versionNotes = new ArrayList<String>();
-	          for (DcatProperty verNotes: dataset.getVersionNotes()) {
-	          	if(verNotes.getValue() != "")
-	          		versionNotes.add("\"" + verNotes.getValue() + "\"");
+	          JSONArray versionNotes = new JSONArray();
+	          for (DcatProperty verNotes : dataset.getVersionNotes()) {
+	              if (verNotes.getValue() != null && !verNotes.getValue().isEmpty())
+	                  versionNotes.put(verNotes.getValue());
 	          }
 
 	          // dateCreated è la creazione della Entity
@@ -551,7 +575,7 @@ public class CatalogueService  {
 	          // This will usually be allocated by the storage platform
 	   
 	          String temporalJson = "";
-	          if (!startDate.isEmpty() || !endDate.isEmpty()) {
+	          if (!startDate.isEmpty() && !endDate.isEmpty()) {
 	              temporalJson = "\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":\"" + startDate + "\"},{\"@type\":\"DateTime\",\"@value\":\"" + endDate + "\"}]}, ";
 	          }
 	          String dateCreatedJson = "";
@@ -562,6 +586,20 @@ public class CatalogueService  {
 	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null && !dataset.getUpdateDate().getValue().isEmpty()) {
 	              dateModifiedJson = "\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + dataset.getUpdateDate().getValue() + "\"}}, ";
 	          }
+	          JSONArray applicableLegislationDs = new JSONArray();
+	          if (dataset.getApplicableLegislation() != null) {
+	              for (DcatProperty al : dataset.getApplicableLegislation()) {
+	                  if (al.getValue() != null && !al.getValue().isEmpty())
+	                      applicableLegislationDs.put(al.getValue());
+	              }
+	          }
+	          JSONArray hvdCategoryDs = new JSONArray();
+	          if (dataset.getHVDCategory() != null) {
+	              for (DcatProperty hc : dataset.getHVDCategory()) {
+	                  if (hc.getValue() != null && !hc.getValue().isEmpty())
+	                      hvdCategoryDs.put(hc.getValue());
+	              }
+	          }
 	          String typeDs = "Dataset";
 	          String dataDs = "{ \"id\": \"" + idDs + "\", \"type\": \"" + typeDs + "\","
 	              + descrDsJson
@@ -571,11 +609,11 @@ public class CatalogueService  {
 	              + titleDsJson
 	              + "\"landingPage\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": [ \"" + dataset.getLandingPage().getValue() + "\" ]" 
+	              + "\"value\": [ \"" + (dataset.getLandingPage() != null && dataset.getLandingPage().getValue() != null ? dataset.getLandingPage().getValue() : "") + "\" ]"
 	              + " },"
 	              + "\"datasetDistribution\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": " + allDistributions.toString() 
+	              + "\"value\": [" + String.join(",", allDistributions) + "]"
 	              + " },"
 	              + "\"contactPoint\": { "
 	              + "\"type\": \"Property\","
@@ -612,25 +650,33 @@ public class CatalogueService  {
 	              + " },"
 	              + "\"version\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + version + "\" },"
+	              + "\"value\": " + JSONObject.quote(version) + " },"
 	              + temporalJson
-	              + "\"accessRights\": { " 
+	              + "\"accessRights\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + dataset.getAccessRights().getValue() + "\" },"
+	              + "\"value\": " + JSONObject.quote(dataset.getAccessRights() != null && dataset.getAccessRights().getValue() != null ? dataset.getAccessRights().getValue() : "") + " },"
 	              + dateCreatedJson
 	              + dateModifiedJson
-	              + "\"publisher\": { " 
+	              + "\"publisher\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + publisher + "\" },"
-	              + "\"creator\": { " 
+	              + "\"value\": " + JSONObject.quote(publisher) + " },"
+	              + "\"creator\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + creator + "\" },"
-	              + "\"frequency\": { " 
+	              + "\"value\": " + JSONObject.quote(creator) + " },"
+	              + "\"frequency\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + frequency + "\" },"		
-	              + "\"source\": { " 
+	              + "\"value\": " + JSONObject.quote(frequency) + " },"
+	              + "\"source\": { "
 	              + "\"type\": \"Property\","
-	              + "\"value\": \"" + dataset.getLandingPage().getValue() + "\" }"		// ricontrolla
+	              + "\"value\": " + JSONObject.quote(dataset.getSource() != null && !dataset.getSource().isEmpty() && dataset.getSource().get(0).getValue() != null ? dataset.getSource().get(0).getValue() : (dataset.getLandingPage() != null && dataset.getLandingPage().getValue() != null ? dataset.getLandingPage().getValue() : "")) + " }"
+	              + (applicableLegislationDs.length() > 0
+	                  ? ",\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
+	                      + applicableLegislationDs.toString() + "}"
+	                  : "")
+	              + (hvdCategoryDs.length() > 0
+	                  ? ",\"hvdCategory\":{\"type\":\"Property\",\"value\":"
+	                      + hvdCategoryDs.toString() + "}"
+	                  : "")
 	              + " }";
 	          
 	          if (!allEntities.contains(dataDs)) {
@@ -669,31 +715,31 @@ public class CatalogueService  {
 	      
 	        String type = "CatalogueDCAT-AP";
 	        String data = "{ \"id\": \"" + id + "\", \"type\": \"" + type + "\","
-	            + "\"description\": { " 
+	            + "\"description\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": \"" + description + "\" }," 
-	            + "\"publisher\": { " 
+	            + "\"value\": " + JSONObject.quote(description) + " },"
+	            + "\"publisher\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": \"" + node.getPublisherName() + "\" }," 
+	            + "\"value\": " + JSONObject.quote(node.getPublisherName()) + " },"
 	            + "\"title\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": [ \"" + name + "\" ]" 
+	            + "\"value\": [ \"" + name + "\" ]"
 	            + " }, "
-	            + "\"name\": { " 
+	            + "\"name\": { "
 	            + "\"type\": \"Property\","
 	            + "\"value\": \"Catalogue\" },"
-	            + "\"alternateName\": { " 
+	            + "\"alternateName\": { "
 	            + "\"type\": \"Property\","
 	            + "\"value\": \"\" },"
-	            + "\"homepage\": { " 
+	            + "\"homepage\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": \"" + node.getHomepage() + "\" },"
-	            + "\"dataProvider\": { " 
+	            + "\"value\": " + JSONObject.quote(node.getHomepage()) + " },"
+	            + "\"dataProvider\": { "
 	            + "\"type\": \"Property\","
 	            + "\"value\": \"\" },"
-	            + "\"source\": { " 
+	            + "\"source\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": \"" + node.getHost() + "\" },"        // rincontrolla
+	            + "\"value\": " + JSONObject.quote(node.getHost()) + " },"
 //				+ "\"dateCreated\": { "
 //				+ "\"type\": \"Property\","
 //				+ "\"value\": { "
@@ -708,11 +754,11 @@ public class CatalogueService  {
 	            + " }, "
 	            + "\"dataset\": { "
 	            + "\"type\": \"Relationship\","
-	            + "\"object\": " + allDatasets.toString()             
+	            + "\"object\": [" + String.join(",", allDatasets) + "]"
 	            + " }, "
 	            + "\"language\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": [ \"" + node.getCountry() + "\" ]" 
+	            + "\"value\": [ " + JSONObject.quote(node.getCountry()) + " ]"
 	            + " } "
 	            + " }";
 	        
@@ -731,9 +777,9 @@ public class CatalogueService  {
 	        identificator = node.getId();
 	        id = "urn:ngsi-ld:id:" + identificator;
 	        data = "{ \"id\": \"" + id + "\", \"type\": \"" + type + "\","
-	            + "\"name\": { " 
+	            + "\"name\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": \"" + agent + "\" }" 
+	            + "\"value\": " + JSONObject.quote(agent) + " }"
 	            + " }";
 	        
 	        if (!allEntities.contains(data)) {
@@ -749,8 +795,8 @@ public class CatalogueService  {
 	            String creatorName = firstValue(catCreator.getName());
 	            String creatorType = catCreator.getType() != null ? catCreator.getType().getValue() : "";
 	            String creatorData = "{ \"id\": \"" + creatorUrn + "\", \"type\": \"AgentDCAT-AP\","
-	                + "\"name\": { \"type\": \"Property\", \"value\": \"" + creatorName + "\" },"
-	                + "\"agentType\": { \"type\": \"Property\", \"value\": \"" + creatorType + "\" }"
+	                + "\"name\": { \"type\": \"Property\", \"value\": " + JSONObject.quote(creatorName) + " },"
+	                + "\"agentType\": { \"type\": \"Property\", \"value\": " + JSONObject.quote(creatorType) + " }"
 	                + " }";
 	            if (!allEntities.contains(creatorData)) {
 	              allEntities.add(creatorData);
@@ -992,8 +1038,37 @@ public class CatalogueService  {
 	  }
 
 	  private String buildContextBrokerApiBase(String rawContextBrokerUrl) {
+	    validateContextBrokerUrl(rawContextBrokerUrl);
 	    String normalizedBaseUrl = normalizeContextBrokerBaseUrl(rawContextBrokerUrl);
 	    return normalizedBaseUrl + "/ngsi-ld/v1/";
+	  }
+
+	  private static void validateContextBrokerUrl(String url) {
+	    if (url == null || url.isBlank()) {
+	      throw new IllegalArgumentException("Context Broker URL is null or empty");
+	    }
+	    try {
+	      String candidate = url.trim();
+	      if (!candidate.startsWith("http://") && !candidate.startsWith("https://")) {
+	        candidate = "http://" + candidate;
+	      }
+	      URI uri = new URI(candidate);
+	      String scheme = uri.getScheme();
+	      if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+	        throw new IllegalArgumentException("Context Broker URL must use http or https scheme");
+	      }
+	      String host = uri.getHost();
+	      if (host == null || host.isBlank()) {
+	        throw new IllegalArgumentException("Context Broker URL has no valid host");
+	      }
+	      // Block SSRF to loopback and link-local addresses
+	      java.net.InetAddress addr = java.net.InetAddress.getByName(host);
+	      if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) {
+	        throw new SecurityException("Context Broker URL resolves to a loopback/link-local address");
+	      }
+	    } catch (java.net.URISyntaxException | java.net.UnknownHostException e) {
+	      throw new IllegalArgumentException("Invalid Context Broker URL: " + e.getMessage(), e);
+	    }
 	  }
 
 	  private String normalizeContextBrokerBaseUrl(String rawContextBrokerUrl) {

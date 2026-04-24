@@ -9,7 +9,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 
 @Configuration
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter{
-	
+
 	@Autowired
 	private UserDetailsService uds;
 
@@ -22,8 +22,11 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter{
 		.antMatchers("/").permitAll()
 		.and().formLogin()
 		.loginPage("/login")
-		.and().csrf().disable(); 
-		
+		// CSRF disabled for stateless REST API endpoints (server-to-server calls from Idra).
+		// CSRF only applies to browser-based sessions; machine-to-machine POST calls have no
+		// way to obtain and include a CSRF token from the cookie.
+		.and().csrf().disable();
+
 	}
 	
 	@Override
