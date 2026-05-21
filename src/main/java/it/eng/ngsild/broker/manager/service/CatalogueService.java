@@ -252,8 +252,11 @@ public class CatalogueService  {
 	            
 	            String typeDis = "DistributionDCAT-AP";
 
-	            String titleDis = titleD.replaceAll("[^a-zA-Z0-9]", " ");
-	            String descr = des.replaceAll("[^a-zA-Z0-9]", " ");
+	            // Preserve natural-language characters (accents, punctuation, non-Latin
+	            // scripts). JSONObject.quote handles JSON escaping safely without losing
+	            // Unicode content.
+	            String titleDis = titleD;
+	            String descr = des;
 
 	            // Build multilingual title/description for distribution
 	            List<DcatDetails> disDetails = d.getDistributionDetails();
@@ -269,25 +272,25 @@ public class CatalogueService  {
 	                    String tv = det.getTitle();
 	                    if (tv != null && !tv.isBlank()) {
 	                        if (!firstT) titleMap.append(",");
-	                        titleMap.append("\"").append(lang).append("\":\"").append(tv.replaceAll("\"", "").replaceAll("'", " ")).append("\"");
+	                        titleMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(tv));
 	                        firstT = false;
 	                    }
 	                    String dv = det.getDescription();
 	                    if (dv != null && !dv.isBlank()) {
 	                        if (!firstD2) descMap.append(",");
-	                        descMap.append("\"").append(lang).append("\":\"").append(dv.replaceAll("[^a-zA-Z0-9 ]", " ")).append("\"");
+	                        descMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(dv));
 	                        firstD2 = false;
 	                    }
 	                }
 	                titleDisJson = firstT
-	                    ? "\"title\":{\"type\":\"Property\",\"value\":[\"" + titleDis + "\"]},"
+	                    ? "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(titleDis) + "]},"
 	                    : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
 	                descrDisJson = firstD2
-	                    ? "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},"
+	                    ? "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},"
 	                    : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
 	            } else {
-	                titleDisJson = "\"title\":{\"type\":\"Property\",\"value\":[\"" + titleDis + "\"]},";
-	                descrDisJson = "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},";
+	                titleDisJson = "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(titleDis) + "]},";
+	                descrDisJson = "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},";
 	            }
 
 	            // H5: use isEmpty() — != "" confronta riferimenti, non contenuto
@@ -396,14 +399,14 @@ public class CatalogueService  {
 	        //int status = restRequest(api, "", "GET");
 	        //if (status != 200) {
 	        
-	          // ADDING DATASET
+	          // ADDING DATASET — preserve UTF-8 / non-Latin content. JSON escaping is
+	          // handled by JSONObject.quote; the old replaceAll("[^a-zA-Z0-9]", " ")
+	          // stripped accents and unicode chars from natural-language fields.
 	          String des = dataset.getDescription().getValue();
-	          String descr = des.replaceAll("[^a-zA-Z0-9]", " ");
+	          String descr = des;
 
 	          String t = dataset.getTitle().getValue();
-	          //String title = t.replaceAll("[^a-zA-Z0-9]", " ");
-	          String title = t.replaceAll("\"", "");
-	          title = title.replaceAll("'", " ");
+	          String title = t;
 
 	          // Build multilingual title/description for dataset
 	          List<DcatDetails> dsDetails = dataset.getDatasetDetails();
@@ -419,25 +422,25 @@ public class CatalogueService  {
 	                  String tv = det.getTitle();
 	                  if (tv != null && !tv.isBlank()) {
 	                      if (!firstT) titleMap.append(",");
-	                      titleMap.append("\"").append(lang).append("\":\"").append(tv.replaceAll("\"", "").replaceAll("'", " ")).append("\"");
+	                      titleMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(tv));
 	                      firstT = false;
 	                  }
 	                  String dv = det.getDescription();
 	                  if (dv != null && !dv.isBlank()) {
 	                      if (!firstD2) descMap.append(",");
-	                      descMap.append("\"").append(lang).append("\":\"").append(dv.replaceAll("[^a-zA-Z0-9 ]", " ")).append("\"");
+	                      descMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(dv));
 	                      firstD2 = false;
 	                  }
 	              }
 	              titleDsJson = firstT
-	                  ? "\"title\":{\"type\":\"Property\",\"value\":[\"" + title + "\"]},"
+	                  ? "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(title) + "]},"
 	                  : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
 	              descrDsJson = firstD2
-	                  ? "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},"
+	                  ? "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},"
 	                  : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
 	          } else {
-	              titleDsJson = "\"title\":{\"type\":\"Property\",\"value\":[\"" + title + "\"]},";
-	              descrDsJson = "\"description\":{\"type\":\"Property\",\"value\":\"" + descr + "\"},";
+	              titleDsJson = "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(title) + "]},";
+	              descrDsJson = "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},";
 	          }
 
 	          String creator = "";
@@ -460,9 +463,16 @@ public class CatalogueService  {
 //	          if (contacts.size() == 0)
 //	        	  contacts.add("");
 	          
-	          // H5 + H7: isEmpty() check, JSONArray serialization
+	          // Emit themes preferring the SKOS Concept URI (e.g. EU data-theme authority)
+	          // over a free-text label. Falls back to the preferred label when no URI is
+	          // available. Old behaviour pushed only the label, losing the authority link.
 	          JSONArray themes = new JSONArray();
 	          for (SkosConceptTheme tema : dataset.getTheme()) {
+	              String uri = tema.getResourceUri();
+	              if (uri != null && !uri.isEmpty()) {
+	                  themes.put(uri);
+	                  continue;
+	              }
 	              for (SkosPrefLabel label : tema.getPrefLabel()) {
 	                  if (label.getValue() != null && !label.getValue().isEmpty()) {
 	                      themes.put(label.getValue());
@@ -574,18 +584,10 @@ public class CatalogueService  {
 	          // dateModified Timestamp of the last modification of the entity. 
 	          // This will usually be allocated by the storage platform
 	   
-	          String temporalJson = "";
-	          if (!startDate.isEmpty() && !endDate.isEmpty()) {
-	              temporalJson = "\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":\"" + startDate + "\"},{\"@type\":\"DateTime\",\"@value\":\"" + endDate + "\"}]}, ";
-	          }
-	          String dateCreatedJson = "";
-	          if (dataset.getReleaseDate() != null && dataset.getReleaseDate().getValue() != null && !dataset.getReleaseDate().getValue().isEmpty()) {
-	              dateCreatedJson = "\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + dataset.getReleaseDate().getValue() + "\"}}, ";
-	          }
-	          String dateModifiedJson = "";
-	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null && !dataset.getUpdateDate().getValue().isEmpty()) {
-	              dateModifiedJson = "\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + dataset.getUpdateDate().getValue() + "\"}}, ";
-	          }
+	          // ---------------- DCAT Dataset entity assembly (NGSI-LD) ----------------
+	          // Build the body as a list of "key":value fragments (each WITHOUT trailing
+	          // comma) then join with ", ". Empty fragments are skipped — no empty-value
+	          // properties are pushed to Orion-LD.
 	          JSONArray applicableLegislationDs = new JSONArray();
 	          if (dataset.getApplicableLegislation() != null) {
 	              for (DcatProperty al : dataset.getApplicableLegislation()) {
@@ -600,84 +602,69 @@ public class CatalogueService  {
 	                      hvdCategoryDs.put(hc.getValue());
 	              }
 	          }
+
+	          String accessRightsValue = (dataset.getAccessRights() != null
+	              && dataset.getAccessRights().getValue() != null)
+	                  ? dataset.getAccessRights().getValue() : "";
+	          String landingPageValue = (dataset.getLandingPage() != null
+	              && dataset.getLandingPage().getValue() != null)
+	                  ? dataset.getLandingPage().getValue() : "";
+	          String sourceValue = (dataset.getSource() != null && !dataset.getSource().isEmpty()
+	              && dataset.getSource().get(0).getValue() != null)
+	                  ? dataset.getSource().get(0).getValue() : landingPageValue;
+
 	          String typeDs = "Dataset";
-	          String dataDs = "{ \"id\": \"" + idDs + "\", \"type\": \"" + typeDs + "\","
-	              + descrDsJson
-	              + "\"alternateName\": { " 
-	              + "\"type\": \"Property\","
-	              + "\"value\": \"\" },"
-	              + titleDsJson
-	              + "\"landingPage\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": [ \"" + (dataset.getLandingPage() != null && dataset.getLandingPage().getValue() != null ? dataset.getLandingPage().getValue() : "") + "\" ]"
-	              + " },"
-	              + "\"datasetDistribution\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": [" + String.join(",", allDistributions) + "]"
-	              + " },"
-	              + "\"contactPoint\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + contacts.toString() 		
-	              + " },"
-	              + keywordDsJson
-	              + "\"theme\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + themes.toString() 			
-	              + " },"
-	              + "\"documentation\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + documentation.toString()    
-	              + " },"
-//	              + "\"hasVersion\": { "
-//	              + "\"type\": \"Property\","
-//	              + "\"value\": " + hasVersion.toString()    	
-//	              + " },"
-	              + "\"language\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + language.toString()    
-	              + " },"
-	              + "\"otherIdentifier\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + otherIdentifier.toString()    
-	              + " },"
-	              + "\"provenance\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + provenance.toString()    
-	              + " },"
-	              + "\"versionNotes\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + versionNotes.toString()    
-	              + " },"
-	              + "\"version\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(version) + " },"
-	              + temporalJson
-	              + "\"accessRights\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(dataset.getAccessRights() != null && dataset.getAccessRights().getValue() != null ? dataset.getAccessRights().getValue() : "") + " },"
-	              + dateCreatedJson
-	              + dateModifiedJson
-	              + "\"publisher\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(publisher) + " },"
-	              + "\"creator\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(creator) + " },"
-	              + "\"frequency\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(frequency) + " },"
-	              + "\"source\": { "
-	              + "\"type\": \"Property\","
-	              + "\"value\": " + JSONObject.quote(dataset.getSource() != null && !dataset.getSource().isEmpty() && dataset.getSource().get(0).getValue() != null ? dataset.getSource().get(0).getValue() : (dataset.getLandingPage() != null && dataset.getLandingPage().getValue() != null ? dataset.getLandingPage().getValue() : "")) + " }"
-	              + (applicableLegislationDs.length() > 0
-	                  ? ",\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
-	                      + applicableLegislationDs.toString() + "}"
-	                  : "")
-	              + (hvdCategoryDs.length() > 0
-	                  ? ",\"hvdCategory\":{\"type\":\"Property\",\"value\":"
-	                      + hvdCategoryDs.toString() + "}"
-	                  : "")
-	              + " }";
+	          java.util.List<String> dsParts = new java.util.ArrayList<>();
+	          // Stripped trailing commas from these pre-built fragments to compose cleanly.
+	          String descrCore = stripTrailingComma(descrDsJson);
+	          if (!descrCore.isEmpty()) dsParts.add(descrCore);
+	          String titleCore = stripTrailingComma(titleDsJson);
+	          if (!titleCore.isEmpty()) dsParts.add(titleCore);
+	          if (!landingPageValue.isEmpty())
+	              dsParts.add("\"landingPage\":{\"type\":\"Property\",\"value\":[\"" + landingPageValue + "\"]}");
+	          dsParts.add("\"datasetDistribution\":{\"type\":\"Property\",\"value\":["
+	              + String.join(",", allDistributions) + "]}");
+	          dsParts.add("\"contactPoint\":{\"type\":\"Property\",\"value\":" + contacts.toString() + "}");
+	          String keywordCore = stripTrailingComma(keywordDsJson);
+	          if (!keywordCore.isEmpty()) dsParts.add(keywordCore);
+	          dsParts.add("\"theme\":{\"type\":\"Property\",\"value\":" + themes.toString() + "}");
+	          dsParts.add("\"documentation\":{\"type\":\"Property\",\"value\":" + documentation.toString() + "}");
+	          dsParts.add("\"language\":{\"type\":\"Property\",\"value\":" + language.toString() + "}");
+	          dsParts.add("\"otherIdentifier\":{\"type\":\"Property\",\"value\":" + otherIdentifier.toString() + "}");
+	          dsParts.add("\"provenance\":{\"type\":\"Property\",\"value\":" + provenance.toString() + "}");
+	          dsParts.add("\"versionNotes\":{\"type\":\"Property\",\"value\":" + versionNotes.toString() + "}");
+	          if (version != null && !version.isEmpty())
+	              dsParts.add("\"version\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(version) + "}");
+	          if (!startDate.isEmpty() && !endDate.isEmpty())
+	              dsParts.add("\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":\""
+	                  + startDate + "\"},{\"@type\":\"DateTime\",\"@value\":\"" + endDate + "\"}]}");
+	          if (!accessRightsValue.isEmpty())
+	              dsParts.add("\"accessRights\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(accessRightsValue) + "}");
+	          if (dataset.getReleaseDate() != null && dataset.getReleaseDate().getValue() != null
+	              && !dataset.getReleaseDate().getValue().isEmpty())
+	              dsParts.add("\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\""
+	                  + dataset.getReleaseDate().getValue() + "\"}}");
+	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null
+	              && !dataset.getUpdateDate().getValue().isEmpty())
+	              dsParts.add("\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\""
+	                  + dataset.getUpdateDate().getValue() + "\"}}");
+	          if (publisher != null && !publisher.isEmpty())
+	              dsParts.add("\"publisher\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(publisher) + "}");
+	          if (creator != null && !creator.isEmpty())
+	              dsParts.add("\"creator\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(creator) + "}");
+	          if (frequency != null && !frequency.isEmpty())
+	              dsParts.add("\"frequency\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(frequency) + "}");
+	          if (sourceValue != null && !sourceValue.isEmpty())
+	              dsParts.add("\"source\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(sourceValue) + "}");
+	          if (applicableLegislationDs.length() > 0)
+	              dsParts.add("\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
+	                  + applicableLegislationDs.toString() + "}");
+	          if (hvdCategoryDs.length() > 0)
+	              dsParts.add("\"hvdCategory\":{\"type\":\"Property\",\"value\":"
+	                  + hvdCategoryDs.toString() + "}");
+
+	          String dataDs = "{\"id\":\"" + idDs + "\",\"type\":\"" + typeDs + "\","
+	              + String.join(",", dsParts) + "}";
 	          
 	          if (!allEntities.contains(dataDs)) {
 	            allEntities.add(dataDs);
@@ -707,12 +694,10 @@ public class CatalogueService  {
 
 //	        System.out.println(" ----------- location :" + node.getLocation());
 //	        System.out.println(" ----------- location descrp:" + node.getLocationDescription());
-	        String des = node.getDescription();
-	        String description = des.replaceAll("[^a-zA-Z0-9]", " ");
-	        
-	        String n = node.getName();
-	        String name = n.replaceAll("[^a-zA-Z0-9]", " ");
-	      
+	        // Preserve UTF-8 content; JSONObject.quote handles JSON escaping.
+	        String description = node.getDescription() != null ? node.getDescription() : "";
+	        String name = node.getName() != null ? node.getName() : "";
+
 	        String type = "CatalogueDCAT-AP";
 	        String data = "{ \"id\": \"" + id + "\", \"type\": \"" + type + "\","
 	            + "\"description\": { "
@@ -723,7 +708,7 @@ public class CatalogueService  {
 	            + "\"value\": " + JSONObject.quote(node.getPublisherName()) + " },"
 	            + "\"title\": { "
 	            + "\"type\": \"Property\","
-	            + "\"value\": [ \"" + name + "\" ]"
+	            + "\"value\": [ " + JSONObject.quote(name) + " ]"
 	            + " }, "
 	            + "\"name\": { "
 	            + "\"type\": \"Property\","
@@ -991,6 +976,15 @@ public class CatalogueService  {
 	      return "";
 	    }
 	    return properties.get(0).getValue();
+	  }
+
+	  // Strips trailing ", " (the convention used by older pre-built JSON fragments
+	  // in this file) so the fragment can be safely placed in a List joined with ",".
+	  private static String stripTrailingComma(String fragment) {
+	    if (fragment == null) return "";
+	    String s = fragment.trim();
+	    if (s.endsWith(",")) s = s.substring(0, s.length() - 1).trim();
+	    return s;
 	  }
 
 	  private List<DcatDataset> parseDatasetsFromResponse(String responseBody) throws Exception {
