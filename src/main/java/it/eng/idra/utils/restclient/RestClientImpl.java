@@ -97,19 +97,21 @@ public class RestClientImpl extends RestClientBaseImpl implements RestClient {
    * @return string
    * @throws Exception the exception
    */
-  @SuppressWarnings("deprecation")
   public String getHttpResponseBody(HttpResponse httpresponse) throws Exception {
 
-    BufferedReader rd = new BufferedReader(
-        new InputStreamReader(httpresponse.getEntity().getContent()));
-
+    // Fully read and close the entity stream so the connection is released back
+    // to the shared pool. Do NOT shut down the connection manager here: the
+    // HttpClient is a process-wide singleton (see RestClientBaseImpl), and
+    // shutting down its pool would break every subsequent request with
+    // "Connection pool shut down".
     StringBuffer result = new StringBuffer();
-    String line = "";
-    while ((line = rd.readLine()) != null) {
-      result.append(line);
+    try (BufferedReader rd = new BufferedReader(
+        new InputStreamReader(httpresponse.getEntity().getContent()))) {
+      String line = "";
+      while ((line = rd.readLine()) != null) {
+        result.append(line);
+      }
     }
-
-    httpclient.getConnectionManager().shutdown();
 
     return result.toString();
   }

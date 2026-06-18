@@ -16,10 +16,12 @@
 package it.eng.idra.utils.restclient.builders;
 
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import javax.ws.rs.core.MediaType;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 
 // TODO: Auto-generated Javadoc
@@ -65,8 +67,11 @@ public class HttpPutBuilder extends HttpRequestBuilder<HttpPut> {
   @Override
   protected void addPayload(MediaType type, String data) {
     try {
-      StringEntity input = new StringEntity(data);
-      input.setContentType(type.toString());
+      // Encode the body as UTF-8 (Content-Type carries the charset too).
+      // The default StringEntity charset is ISO-8859-1, which corrupted
+      // accented metadata (e.g. "qualità") when posting NGSI-LD to Orion.
+      StringEntity input =
+          new StringEntity(data, ContentType.create(type.toString(), StandardCharsets.UTF_8));
       super.httpRequest.setEntity(input);
     } catch (Exception e) {
       logger.warning(e.toString());

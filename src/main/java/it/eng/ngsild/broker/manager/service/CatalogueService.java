@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import java.util.TimeZone;
 import javax.ws.rs.core.MediaType;
 import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joda.time.DateTime;
@@ -64,7 +65,13 @@ public class CatalogueService  {
 	
 	@Value("${idra.basepath}")
 	private String idraBasePath;
-	
+
+	// Comma-separated hostnames trusted as Context Broker even when they resolve
+	// to a private/internal address (e.g. the Orion broker on the docker network).
+	// SSRF protection in validateContextBrokerUrl still applies to every other host.
+	@Value("${contexBroker.url.allowlist:}")
+	private String contextBrokerUrlAllowlist;
+
 	public int start(Configurations config) throws Exception {
 		return addCatalogueInCb(config);
 	}
@@ -315,11 +322,11 @@ public class CatalogueService  {
 	            
 	            String releaseDateDisJson = "";
 	            if (d.getReleaseDate() != null && d.getReleaseDate().getValue() != null && !d.getReleaseDate().getValue().isEmpty()) {
-	                releaseDateDisJson = "\"releaseDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + d.getReleaseDate().getValue() + "\"}}, ";
+	                releaseDateDisJson = "\"releaseDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(d.getReleaseDate().getValue()) + "}}, ";
 	            }
 	            String modifiedDateDisJson = "";
 	            if (d.getUpdateDate() != null && d.getUpdateDate().getValue() != null && !d.getUpdateDate().getValue().isEmpty()) {
-	                modifiedDateDisJson = "\"modifiedDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\"" + d.getUpdateDate().getValue() + "\"}}, ";
+	                modifiedDateDisJson = "\"modifiedDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(d.getUpdateDate().getValue()) + "}}, ";
 	            }
 	            String accessUrlVal = (d.getAccessUrl() != null && d.getAccessUrl().getValue() != null)
 	            ? d.getAccessUrl().getValue() : "";
@@ -356,11 +363,11 @@ public class CatalogueService  {
 	                + " },"
 	                + "\"format\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + format + "\""
+	                + "\"value\": " + JSONObject.quote(format)
 	                + " },"
 	                + "\"mediaType\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + mediaType + "\""
+	                + "\"value\": " + JSONObject.quote(mediaType)
 	                + " },"
 	                + "\"rights\": { "
 	                + "\"type\": \"Property\","
@@ -372,15 +379,15 @@ public class CatalogueService  {
 	                + " },"
 	                + "\"byteSize\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + byteSize + "\""
+	                + "\"value\": " + JSONObject.quote(byteSize)
 	                + " },"
 	                + "\"checksum\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + checksum + "\""
+	                + "\"value\": " + JSONObject.quote(checksum)
 	                + " },"
 	                + "\"status\": { "
 	                + "\"type\": \"Property\","
-	                + "\"value\": \"" + stat + "\""
+	                + "\"value\": " + JSONObject.quote(stat)
 	                + " }"
 	                + (applicableLegislationDis.length() > 0
 	                    ? ",\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
@@ -498,9 +505,9 @@ public class CatalogueService  {
 	                  boolean firstLang = true;
 	                  for (Map.Entry<String, List<String>> entry : kwByLang.entrySet()) {
 	                      if (!firstLang) kwMap.append(",");
-	                      kwMap.append("\"").append(entry.getKey()).append("\":[")
+	                      kwMap.append(JSONObject.quote(entry.getKey())).append(":[")
 	                           .append(entry.getValue().stream()
-	                               .map(v -> "\"" + v + "\"")
+	                               .map(v -> JSONObject.quote(v))
 	                               .collect(Collectors.joining(",")))
 	                           .append("]");
 	                      firstLang = false;
@@ -509,7 +516,7 @@ public class CatalogueService  {
 	              } else {
 	                  ArrayList<String> keywords = new ArrayList<>();
 	                  for (String keyw : dataset.getKeywords()) {
-	                      if (!keyw.isEmpty()) keywords.add("\"" + keyw + "\"");
+	                      if (!keyw.isEmpty()) keywords.add(JSONObject.quote(keyw));
 	                  }
 	                  if (keywords.isEmpty()) keywords.add("\"\"");
 	                  keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
@@ -517,7 +524,7 @@ public class CatalogueService  {
 	          } else {
 	              ArrayList<String> keywords = new ArrayList<>();
 	              for (String keyw : dataset.getKeywords()) {
-	                  if (!keyw.isEmpty()) keywords.add("\"" + keyw + "\"");
+	                  if (!keyw.isEmpty()) keywords.add(JSONObject.quote(keyw));
 	              }
 	              if (keywords.isEmpty()) keywords.add("\"\"");
 	              keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
@@ -621,7 +628,7 @@ public class CatalogueService  {
 	          String titleCore = stripTrailingComma(titleDsJson);
 	          if (!titleCore.isEmpty()) dsParts.add(titleCore);
 	          if (!landingPageValue.isEmpty())
-	              dsParts.add("\"landingPage\":{\"type\":\"Property\",\"value\":[\"" + landingPageValue + "\"]}");
+	              dsParts.add("\"landingPage\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(landingPageValue) + "]}");
 	          dsParts.add("\"datasetDistribution\":{\"type\":\"Property\",\"value\":["
 	              + String.join(",", allDistributions) + "]}");
 	          dsParts.add("\"contactPoint\":{\"type\":\"Property\",\"value\":" + contacts.toString() + "}");
@@ -636,18 +643,18 @@ public class CatalogueService  {
 	          if (version != null && !version.isEmpty())
 	              dsParts.add("\"version\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(version) + "}");
 	          if (!startDate.isEmpty() && !endDate.isEmpty())
-	              dsParts.add("\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":\""
-	                  + startDate + "\"},{\"@type\":\"DateTime\",\"@value\":\"" + endDate + "\"}]}");
+	              dsParts.add("\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":"
+	                  + JSONObject.quote(startDate) + "},{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(endDate) + "}]}");
 	          if (!accessRightsValue.isEmpty())
 	              dsParts.add("\"accessRights\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(accessRightsValue) + "}");
 	          if (dataset.getReleaseDate() != null && dataset.getReleaseDate().getValue() != null
 	              && !dataset.getReleaseDate().getValue().isEmpty())
-	              dsParts.add("\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\""
-	                  + dataset.getReleaseDate().getValue() + "\"}}");
+	              dsParts.add("\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":"
+	                  + JSONObject.quote(dataset.getReleaseDate().getValue()) + "}}");
 	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null
 	              && !dataset.getUpdateDate().getValue().isEmpty())
-	              dsParts.add("\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":\""
-	                  + dataset.getUpdateDate().getValue() + "\"}}");
+	              dsParts.add("\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":"
+	                  + JSONObject.quote(dataset.getUpdateDate().getValue()) + "}}");
 	          if (publisher != null && !publisher.isEmpty())
 	              dsParts.add("\"publisher\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(publisher) + "}");
 	          if (creator != null && !creator.isEmpty())
@@ -858,7 +865,8 @@ public class CatalogueService  {
 	        
 	        // DATASETS AGENTS DELETING 
 	        // 1. CREATORS
-	        if (dataset.getCreator() != null) {
+	        if (dataset.getCreator() != null && dataset.getCreator().getIdentifier() != null
+	            && dataset.getCreator().getIdentifier().getValue() != null) {
 	          identif = dataset.getCreator().getIdentifier().getValue();
 	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
 	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
@@ -868,7 +876,8 @@ public class CatalogueService  {
 	          }
 	        }
 	        // 2. PUBLISHERS
-	        if (dataset.getPublisher() != null) {    
+	        if (dataset.getPublisher() != null && dataset.getPublisher().getIdentifier() != null
+	            && dataset.getPublisher().getIdentifier().getValue() != null) {
 	          identif = dataset.getPublisher().getIdentifier().getValue();
 	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
 	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
@@ -878,7 +887,8 @@ public class CatalogueService  {
 	          }
 	        }
 	        // 3. RIGHT HOLDERS
-	        if (dataset.getRightsHolder() != null) {  
+	        if (dataset.getRightsHolder() != null && dataset.getRightsHolder().getIdentifier() != null
+	            && dataset.getRightsHolder().getIdentifier().getValue() != null) {
 	          identif = dataset.getRightsHolder().getIdentifier().getValue();
 	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
 	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
@@ -915,7 +925,7 @@ public class CatalogueService  {
 	    	// POST DELETE BATCH 
 	        status = restRequest(api, data, "POST");
 	        logger.info("STATUS DELETE " + status);
-//	        if (status != 200 && status != 207 && status != 204 && status != -1 
+//	        if (status != 200 && status != 207 && status != 204 
 //	            && status != 201 && status != 301) {
 //	          throw new Exception("------------ STATUS DELETE DISTRIBUTION - CONTEXT BROKER: " + status);
 //	        }
@@ -947,7 +957,7 @@ public class CatalogueService  {
 
 	      status = restRequest(api, data, "POST");
 	      
-	      if (status != 200 && status != 207 && status != 204 && status != -1 
+	      if (status != 200 && status != 207 && status != 204 
 	          && status != 201 && status != 301) {
 	    	  return status;
 //	        throw new Exception("------------ STATUS POST - CONTEXT BROKER: " + status);
@@ -961,7 +971,7 @@ public class CatalogueService  {
 		    data =  list.toString(); 
 	
 		    status = restRequest(api, data, "POST");
-		    if (status != 200 && status != 207 && status != 204 && status != -1 
+		    if (status != 200 && status != 207 && status != 204 
 		        && status != 201 && status != 301) {
 		    	return status;
 //		      throw new Exception("------------ STATUS POST - CONTEXT BROKER: " + status);
@@ -1037,7 +1047,7 @@ public class CatalogueService  {
 	    return normalizedBaseUrl + "/ngsi-ld/v1/";
 	  }
 
-	  private static void validateContextBrokerUrl(String url) {
+	  private void validateContextBrokerUrl(String url) {
 	    if (url == null || url.isBlank()) {
 	      throw new IllegalArgumentException("Context Broker URL is null or empty");
 	    }
@@ -1055,14 +1065,36 @@ public class CatalogueService  {
 	      if (host == null || host.isBlank()) {
 	        throw new IllegalArgumentException("Context Broker URL has no valid host");
 	      }
-	      // Block SSRF to loopback and link-local addresses
-	      java.net.InetAddress addr = java.net.InetAddress.getByName(host);
-	      if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) {
-	        throw new SecurityException("Context Broker URL resolves to a loopback/link-local address");
+	      // Trusted internal brokers (e.g. Orion on the docker network) are exempt
+	      // from the private-address check; SSRF protection still applies elsewhere.
+	      if (isAllowlistedContextBrokerHost(host)) {
+	        return;
+	      }
+	      // Block SSRF to loopback, link-local, private (RFC1918), any-local and multicast.
+	      // Resolve every address to reduce DNS multi-record / rebinding bypass.
+	      java.net.InetAddress[] addrs = java.net.InetAddress.getAllByName(host);
+	      for (java.net.InetAddress addr : addrs) {
+	        if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()
+	            || addr.isAnyLocalAddress() || addr.isMulticastAddress()) {
+	          throw new SecurityException(
+	              "Context Broker URL resolves to a non-routable/internal address");
+	        }
 	      }
 	    } catch (java.net.URISyntaxException | java.net.UnknownHostException e) {
 	      throw new IllegalArgumentException("Invalid Context Broker URL: " + e.getMessage(), e);
 	    }
+	  }
+
+	  private boolean isAllowlistedContextBrokerHost(String host) {
+	    if (contextBrokerUrlAllowlist == null || contextBrokerUrlAllowlist.isBlank()) {
+	      return false;
+	    }
+	    for (String allowed : contextBrokerUrlAllowlist.split(",")) {
+	      if (allowed.trim().equalsIgnoreCase(host)) {
+	        return true;
+	      }
+	    }
+	    return false;
 	  }
 
 	  private String normalizeContextBrokerBaseUrl(String rawContextBrokerUrl) {
@@ -1143,6 +1175,10 @@ public class CatalogueService  {
 		    int status = client.getStatus(response);
 		    if (status != 200 && status != 201 && status != 204) {
 		        try { logger.warn("CB RESPONSE BODY (" + status + "): " + client.getHttpResponseBody(response)); } catch (Exception ex) { logger.warn("Could not read CB response body: " + ex.getMessage()); }
+		    }
+		    // Release the pooled connection (consume any unread entity).
+		    if (response != null) {
+		        try { EntityUtils.consumeQuietly(response.getEntity()); } catch (Exception ignore) { /* no-op */ }
 		    }
 		    return status;
 	}

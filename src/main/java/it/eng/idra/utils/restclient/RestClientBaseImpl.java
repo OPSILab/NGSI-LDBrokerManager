@@ -31,11 +31,9 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 // TODO: Auto-generated Javadoc
 /**
@@ -46,29 +44,36 @@ public abstract class RestClientBaseImpl {
   /** The Constant logger. */
   protected static final Logger logger = Logger.getLogger(RestClient.class.getName());
 
+  /** Shared, thread-safe HTTP client (pooled) reused across all requests. */
+  private static volatile CloseableHttpClient sharedClient;
+
   /** The httpclient. */
   protected HttpClient httpclient = null;
 
   /**
-   * Builds the client.
+   * Builds (once) and returns the shared HTTP client. Uses the JVM default trust
+   * store with certificate and hostname verification enabled (no self-signed trust,
+   * no disabled hostname check). A pooling connection manager bounds and reuses
+   * connections instead of leaking a new client per request.
    *
    * @return the http client
    */
   protected HttpClient buildClient() {
-
-    SSLContextBuilder sshbuilder = new SSLContextBuilder();
-    try {
-      sshbuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-      SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sshbuilder.build());
-
-      httpclient = HttpClients.custom()
-          .setDefaultRequestConfig(
-              RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build())
-          .setSSLHostnameVerifier(new NoopHostnameVerifier()).setSSLSocketFactory(sslsf).build();
-    } catch (Exception e) {
-      e.printStackTrace();
+    if (sharedClient == null) {
+      synchronized (RestClientBaseImpl.class) {
+        if (sharedClient == null) {
+          PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+          cm.setMaxTotal(100);
+          cm.setDefaultMaxPerRoute(20);
+          sharedClient = HttpClients.custom()
+              .setConnectionManager(cm)
+              .setDefaultRequestConfig(
+                  RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build())
+              .build();
+        }
+      }
     }
-
+    httpclient = sharedClient;
     return httpclient;
   }
 

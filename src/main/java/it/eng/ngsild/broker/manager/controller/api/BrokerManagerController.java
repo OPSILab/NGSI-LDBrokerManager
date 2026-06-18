@@ -39,8 +39,6 @@ public class BrokerManagerController {
 			int status = cs.start(config);
 			return Response.status(status).build();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			return handleErrorResponse500(e);
 		}
 	}
@@ -57,8 +55,6 @@ public class BrokerManagerController {
 			return Response.status(status).build();
 
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 			return handleErrorResponse500(e);
 		}
 	}
@@ -70,10 +66,12 @@ public class BrokerManagerController {
 	   * @return the response
 	   */
 	  private static Response handleErrorResponse500(Exception e) {
-	    e.printStackTrace();
+	    // Log full detail server-side; return a generic message (no exception text/class) to the client.
+	    logger.error(e.getMessage(), e);
 	    ErrorResponse error = new ErrorResponse(
-	        String.valueOf(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()), e.getMessage(),
-	        e.getClass().getSimpleName(), "An error occurred, please contact the administrator!");
+	        String.valueOf(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+	        "Internal server error", "InternalError",
+	        "An error occurred, please contact the administrator!");
 	    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON)
 	        .entity(error.toJson()).build();
 	  }

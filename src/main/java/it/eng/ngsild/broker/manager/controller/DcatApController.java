@@ -2,6 +2,7 @@ package it.eng.ngsild.broker.manager.controller;
 
 
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import java.util.Arrays;
@@ -163,7 +164,7 @@ public class DcatApController {
 				node = map.readTree(dataset.toString());
 			} catch (JsonProcessingException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error(e.getMessage(), e);
 			}
 			String entityString = datasetNgsi.convertToNgsi(node);
 			HttpHeaders headers = new HttpHeaders();
@@ -246,12 +247,12 @@ public class DcatApController {
 
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		} catch (JsonProcessingException e) {
 			
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
     }
@@ -364,12 +365,12 @@ public class DcatApController {
 
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		} catch (JsonProcessingException e) {
 			
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
     }
@@ -450,12 +451,12 @@ public class DcatApController {
 
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		} catch (JsonProcessingException e) {
 			
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
     }
@@ -546,12 +547,12 @@ public class DcatApController {
 
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		} catch (JsonProcessingException e) {
 			
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
     }
@@ -600,12 +601,12 @@ public class DcatApController {
 
 		} catch (JsonMappingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		} catch (JsonProcessingException e) {
 			
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			return null;
 		}
     }
@@ -736,17 +737,45 @@ public List<Object> getAllDistributiondcatap() {
 	  int limit = 20;
 		int offset = 0;
 		List<Object> dataset= new ArrayList();
-	
+
 		String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities";
-		ResponseEntity<Object[]> response;
+		List<Object> responseArr;
 		do {
-			response = restTemplate.getForEntity(contexBrokerEndpoint + "?type=DistributionDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset , Object[].class);
-			List<Object> responseArr = Arrays.asList(response.getBody());
+			responseArr = fetchEntitiesLenient(contexBrokerEndpoint
+					+ "?type=DistributionDCAT-AP&options=keyValues&limit=" + limit + "&offset=" + offset);
 			dataset.addAll(responseArr);
-			offset = offset + limit; 
-		} while (!Arrays.asList(response.getBody()).isEmpty());
+			offset = offset + limit;
+		} while (!responseArr.isEmpty());
 		return dataset;
     }
+
+/**
+ * Fetch an NGSI-LD entity list from the Context Broker, decoding the body with a
+ * lenient UTF-8 decoder. Entities written by older versions of the broker may
+ * contain stray ISO-8859-1 bytes (e.g. an accented char stored as a single high
+ * byte); strict decoding would make the whole listing fail with 500. Malformed
+ * bytes are replaced so the endpoint keeps working; re-ingesting the affected
+ * entity (now written as UTF-8) restores the original character.
+ */
+private List<Object> fetchEntitiesLenient(String url) {
+	ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
+	byte[] body = response.getBody();
+	if (body == null || body.length == 0) {
+		return new ArrayList<>();
+	}
+	java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+			.onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
+			.onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPLACE);
+	try {
+		String json = decoder.decode(java.nio.ByteBuffer.wrap(body)).toString();
+		ObjectMapper mapper = new ObjectMapper();
+		Object[] entities = mapper.readValue(json, Object[].class);
+		return Arrays.asList(entities);
+	} catch (Exception e) {
+		log.error("Failed to parse Context Broker entity list from {}", url, e);
+		return new ArrayList<>();
+	}
+}
 
 @RequestMapping(value = "/entity/{id}", method = RequestMethod.GET)
 @Operation(summary = "Get entity by id")
@@ -949,7 +978,7 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 	        try {
 	            node = map.readTree(dataset.toString());
 	        } catch (JsonProcessingException e) {
-	            e.printStackTrace();
+	            log.error(e.getMessage(), e);
 	        }
 
 	        String entityString = datasetNgsi.convertToNgsi(node);
@@ -1074,7 +1103,7 @@ public String updateDistribution(@PathVariable("id") String distributionId, @Req
 			node = map.readTree(distribution.toString());
 		} catch (JsonProcessingException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		String entityString = distributionNgsi.convertToNgsi(node);
 		JSONObject jsonObj = new JSONObject(entityString);

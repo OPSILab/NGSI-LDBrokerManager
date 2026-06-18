@@ -7,10 +7,12 @@ services:
     ports:
       - 8082:8082
     environment:
-      - SERVER_DEBUG=false
-      - IDRA_BASE_PATH=http://46.17.108.72:8080
-      - HOST_ORION=http://46.17.108.118
-      - PORT_ORION=1026
+      - SERVER_DEBUG=${SERVER_DEBUG}
+      - IDRA_BASE_PATH=${IDRA_BASE_PATH}
+      - HOST_ORION=${HOST_ORION}
+      - PORT_ORION=${PORT_ORION}
+      # Context Broker hosts exempt from the SSRF private-address check.
+      - CB_URL_ALLOWLIST=${CB_URL_ALLOWLIST}
     networks:
       - ngsi-broker
       
