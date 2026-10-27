@@ -67,6 +67,9 @@ public class FoafAgent implements Serializable {
   // private DcatProperty name; //check, need to be list u dcat-apv3
   private List<DcatProperty> name;
 
+  /** Language tag of each name, aligned with name ("" = none); sent by Idra beside the plain-string names. */
+  private List<String> nameLanguage;
+
   // Recommended
 
   /** The resource uri. */

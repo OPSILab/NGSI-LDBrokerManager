@@ -538,7 +538,10 @@ public final class GsonUtil {
         }
         if (valueElement != null && !valueElement.isJsonNull()) {
           if (valueElement.isJsonPrimitive()) {
-            return new DcatProperty("", valueElement.getAsString());
+            DcatProperty property = new DcatProperty("", valueElement.getAsString());
+            JsonElement language = json.getAsJsonObject().get("language");
+            if (language != null && !language.isJsonNull()) property.setLanguage(language.getAsString());
+            return property;
           }
           return new DcatProperty("", valueElement.toString());
         }

@@ -168,7 +168,7 @@ public class DcatApController {
 			}
 			String entityString = datasetNgsi.convertToNgsi(node);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 			ResponseEntity<String> response = restTemplate.postForEntity(contexBrokerEndpoint + "/", entity, String.class);
@@ -234,7 +234,7 @@ public class DcatApController {
 			String entityString = agentNgsi.convertToNgsi(node);
 			log.debug("Agent NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 			
@@ -349,7 +349,7 @@ public class DcatApController {
 			String entityString = catalogueNgsi.convertToNgsi(node);
 			log.debug("Catalogue NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 
@@ -438,7 +438,7 @@ public class DcatApController {
 			String entityString = catalogueNgsi.convertToNgsi(node);
 			log.debug("CatalogueRecord NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 
@@ -534,7 +534,7 @@ public class DcatApController {
 			String entityString = dataserviceNgsi.convertToNgsi(node);
 			log.debug("DataService NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 			
@@ -588,7 +588,7 @@ public class DcatApController {
 			String entityString = distributionNgsi.convertToNgsi(node);
 			log.debug("Distribution NGSI-LD entity: {}", entityString);
 			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		
 			final HttpEntity<String> entity = new HttpEntity<String>(entityString, headers);
 			
@@ -823,7 +823,7 @@ public void deleteEntity(@PathVariable("id") String datasetId) {
 	try {
 	
 		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		final HttpEntity<String> entity = new HttpEntity<String>( headers);
 		restTemplate.delete(contexBrokerEndpoint);
 	} catch (HttpClientErrorException e) {
@@ -904,7 +904,7 @@ public void deleteSpatialAttribute(String entityId) {
     try {
     	String contexBrokerEndpoint =  hostContextBroker + ":" + portContextBroker + "/ngsi-ld/v1/entities/" + entityId + "/attrs/spatial";
     	HttpHeaders headers = new HttpHeaders();
-    	headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setContentType(MediaType.parseMediaType("application/ld+json"));
     	final HttpEntity<String> entity = new HttpEntity<String>( headers);
     	restTemplate.delete(contexBrokerEndpoint);
     
@@ -995,7 +995,7 @@ public String updateDataset(@PathVariable("id") String datasetId, @RequestBody J
 	        jsonObj.remove("type");
 
 	        HttpHeaders headers = new HttpHeaders();
-	        headers.setContentType(MediaType.APPLICATION_JSON);
+	        headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 	        HttpEntity<String> entity = new HttpEntity<>(jsonObj.toString(), headers);
 
 	        // PATCH update
@@ -1061,7 +1061,7 @@ public void deleteDistribution(@PathVariable("id") String distributionId) {
 	try {
 	
 		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 		final HttpEntity<String> entity = new HttpEntity<String>( headers);
 		restTemplate.delete(contexBrokerEndpoint);
 	} catch (HttpClientErrorException e) {
@@ -1111,7 +1111,7 @@ public String updateDistribution(@PathVariable("id") String distributionId, @Req
 		jsonObj.remove("id");
 		jsonObj.remove("type");
 		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
+		headers.setContentType(MediaType.parseMediaType("application/ld+json"));
 	
 	log.debug("PATCH payload: {}", jsonObj);
 		final HttpEntity<String> entity = new HttpEntity<String>(jsonObj.toString(), headers);

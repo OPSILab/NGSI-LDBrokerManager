@@ -38,6 +38,18 @@ import javax.persistence.Transient;
 public class DcatCatalogueRecord implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    private String resourceUri;
+    private List<DcatProperty> languages = new java.util.ArrayList<DcatProperty>();
+    @Column(name = "resourceUri", length = 2048)
+    public String getResourceUri() { return resourceUri; }
+    public void setResourceUri(String value) { resourceUri = value; }
+
+    @LazyCollection(LazyCollectionOption.FALSE)
+    @javax.persistence.ElementCollection
+    @javax.persistence.CollectionTable(name = "dcat_record_language", joinColumns = @JoinColumn(name = "catalogue_record_id"))
+    @AttributeOverride(name = "value", column = @Column(name = "languageUri", length = 2048))
+    public List<DcatProperty> getLanguages() { return languages; }
+    public void setLanguages(List<DcatProperty> values) { languages = values; }
 
     /** The Constant RDFClass. */
     private static final transient Resource RDFClass = DCAT.CatalogRecord;
@@ -69,6 +81,8 @@ public class DcatCatalogueRecord implements Serializable {
 
     /** The primary topic (Dataset or Data Service) for the catalogue record. */
     private DcatProperty primaryTopic; // Can be Dataset or Data Service
+    // dct:source: the original catalogue record this record was derived from (IRI).
+    private DcatProperty source;
 
     /** The source metadata of the catalogue record. */
     // private DcatCatalogueRecord sourceMetadata;
@@ -171,28 +185,16 @@ public class DcatCatalogueRecord implements Serializable {
         this.changeType = changeType;
     }
 
-    @LazyCollection(LazyCollectionOption.FALSE)
-    @OneToMany(cascade = { CascadeType.ALL })
-    // @Fetch(FetchMode.SELECT)
-    // @JoinColumns({ @JoinColumn(name = "dataset_id", referencedColumnName =
-    // "dataset_id"),
-    // @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
-    @JoinColumn(name = "catalogue_record_id", referencedColumnName = "catalogue_record_id")
+    @Transient
     public List<DcatDetails> getDescription() {
-        return description;
+        return title;
     }
 
     public void setDescription(List<DcatDetails> description) {
         this.description = description;
     }
 
-    @LazyCollection(LazyCollectionOption.FALSE)
-    @OneToMany(cascade = { CascadeType.ALL })
-    // @Fetch(FetchMode.SELECT)
-    // @JoinColumns({ @JoinColumn(name = "dataset_id", referencedColumnName =
-    // "dataset_id"),
-    // @JoinColumn(name = "nodeID", referencedColumnName = "nodeID") })
-    @JoinColumn(name = "catalogue_record_id", referencedColumnName = "catalogue_record_id")
+    @Transient
     public List<DcatDetails> getLanguage() {
         return language;
     }
@@ -229,6 +231,16 @@ public class DcatCatalogueRecord implements Serializable {
 
     public void setPrimaryTopic(DcatProperty primaryTopic) {
         this.primaryTopic = primaryTopic;
+    }
+
+    @Embedded
+    @AttributeOverrides({ @AttributeOverride(name = "value", column = @Column(name = "sourceRecord", columnDefinition = "TEXT")) })
+    public DcatProperty getSource() {
+        return source;
+    }
+
+    public void setSource(DcatProperty source) {
+        this.source = source;
     }
 
     // public DcatCatalogueRecord getSourceMetadata() {

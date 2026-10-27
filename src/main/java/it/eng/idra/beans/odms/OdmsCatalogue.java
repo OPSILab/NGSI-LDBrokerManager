@@ -21,6 +21,7 @@ import it.eng.idra.beans.dcat.DcatApFormat;
 import it.eng.idra.beans.dcat.DcatApProfile;
 import it.eng.idra.beans.dcat.DcatCatalogueRecord;
 import it.eng.idra.beans.dcat.DcatDataService;
+import it.eng.idra.beans.dcat.DcatDatasetSeries;
 import it.eng.idra.beans.dcat.DcatProperty;
 import it.eng.idra.beans.dcat.DctLocation;
 import it.eng.idra.beans.dcat.DctPeriodOfTime;
@@ -189,6 +190,25 @@ public class OdmsCatalogue {
   /** DCAT-AP 3 - Data services offered in this catalogue. */
   @Expose
   private List<DcatDataService> service;
+
+  /** Source graph for an acquisition with no Dataset; persisted independently of the dump file. */
+  @Expose
+  private String standaloneRdf;
+
+  /** Source dcat:Catalog description captured by Idra (DcatCatalogueSource); Idra's configuration stays separate. */
+  @Expose
+  private String sourceMetadata;
+
+  @Expose
+  private List<DcatDatasetSeries> datasetSeries;
+
+  public String getStandaloneRdf() { return standaloneRdf; }
+  public void setStandaloneRdf(String value) { standaloneRdf = value; }
+  public String getSourceMetadata() { return sourceMetadata; }
+  public void setSourceMetadata(String value) { sourceMetadata = value; }
+  public List<DcatDatasetSeries> getDatasetSeries() { return datasetSeries; }
+  public void setDatasetSeries(List<DcatDatasetSeries> value) { datasetSeries = value; }
+
 
   /** DCAT-AP 3 - Catalogue records. */
   @Expose

@@ -31,31 +31,33 @@ public class BrokerManagerController {
 	// ADDING CATALOGUE, POST
 	@RequestMapping(value="/startProcess", method=RequestMethod.POST)  
 	@CrossOrigin(origins = {"${idra.basepath}"})
-	public Response start(@Valid @RequestBody Configurations config) {
+	public org.springframework.http.ResponseEntity<String> start(@Valid @RequestBody Configurations config) {
 		try {
 			logger.info("Broker Manager for ADDING RICEVE the Node ID: " + config.getCatalogueId());
 			logger.info("and the Context broker URL: " + config.getContextBrokerUrl());
 
 			int status = cs.start(config);
-			return Response.status(status).build();
+			return org.springframework.http.ResponseEntity.status(status).build();
 		} catch (Exception e) {
-			return handleErrorResponse500(e);
+			logger.error("Catalogue operation failed",e);
+            return org.springframework.http.ResponseEntity.status(500).body("Internal server error");
 		}
 	}
 	
 	// DELETING CATALOGUE, POST
 	@RequestMapping(value="/deleteCatalogue", method=RequestMethod.POST)  
 	@CrossOrigin(origins = {"${idra.basepath}"})
-	public Response delete(@Valid @RequestBody Configurations config) {
+	public org.springframework.http.ResponseEntity<String> delete(@Valid @RequestBody Configurations config) {
 		try {
 			logger.info("Broker Manager for DELETING RICEVE the Node ID: " + config.getCatalogueId());
 			logger.info("and the Context broker URL: " + config.getContextBrokerUrl());
 			
 			int status = cs.delete(config);
-			return Response.status(status).build();
+			return org.springframework.http.ResponseEntity.status(status).build();
 
 		} catch (Exception e) {
-			return handleErrorResponse500(e);
+			logger.error("Catalogue operation failed",e);
+            return org.springframework.http.ResponseEntity.status(500).body("Internal server error");
 		}
 	}
 	

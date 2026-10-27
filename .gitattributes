@@ -1,0 +1,8 @@
+# Preserve existing CRLF source blobs and accept CR as a line ending.
+src/main/java/it/eng/ngsild/broker/manager/controller/DcatApController.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/AgentDcatAp.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/CatalogueDcatAp.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/CatalogueRecordDcatAp.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/DataServiceDcatAp.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/Dataset.java -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/main/java/it/eng/ngsild/broker/manager/model/DistributionDcatAp.java -text whitespace=trailing-space,space-before-tab,cr-at-eol

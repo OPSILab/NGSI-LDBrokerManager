@@ -28,6 +28,7 @@ import java.net.URI;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +49,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 
 
 @Service
@@ -58,6 +60,13 @@ public class CatalogueService  {
 	private static final Type DCAT_DATASET_LIST_TYPE = new TypeToken<List<DcatDataset>>() {
 	}.getType();
   private static final int DATASET_PAGE_SIZE = 1000;
+  // Keep requests below Orion's default 1 MiB limit, counting UTF-8 bytes.
+  private static final int MAX_BATCH_BYTES = 900000;
+
+  private static final int PRUNE_ROUNDS = 3;
+  // A reconciliation reads ownership, writes batches, then prunes stale IDs.
+  // Keep that sequence exclusive for the same configured broker in this JVM.
+  private static final java.util.concurrent.ConcurrentMap<String,java.util.concurrent.locks.ReentrantLock> BROKER_LOCKS = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public CatalogueService() {
 	}
@@ -65,6 +74,8 @@ public class CatalogueService  {
 	
 	@Value("${idra.basepath}")
 	private String idraBasePath;
+  @Value("${dcat.context.url:http://ngsi-broker:8082/dcat3-context.jsonld}")
+  private String dcatContextUrl;
 
 	// Comma-separated hostnames trusted as Context Broker even when they resolve
 	// to a private/internal address (e.g. the Orion broker on the docker network).
@@ -82,739 +93,22 @@ public class CatalogueService  {
 
 	
 	public int addCatalogueInCb(Configurations config) throws Exception {
-		
-		String nodeId = config.getCatalogueId();
-		String urlCB = buildContextBrokerApiBase(config.getContextBrokerUrl());
-		
-	      ArrayList<String> allDatasets = new ArrayList<String>();
-	      ArrayList<String> allEntities = new ArrayList<String>();
-	      
-	      // I get the catalogue through Idra API
-	      RestTemplate restTemplate = new RestTemplate();
-	      
-	      OdmsCatalogue node = restTemplate
-	    	      .getForObject(idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId, OdmsCatalogue.class);
-	      logger.info("CATALOGUE NAME: " + node.getName());
-
-	      // I get all datasets through Idra API (paginated)
-	      List<DcatDataset> datasets = getAllCatalogueDatasets(restTemplate, nodeId);
-	      logger.info("Datasets collected for federation: " + datasets.size());
-
-	      // ADDING DATASETS
-	      for (DcatDataset dataset : datasets) {
-
-	        String idDataset = "\"urn:ngsi-ld:Catalogue:dataset:" + dataset.getId() + "\"";
-	        if (!allDatasets.contains(idDataset)) {
-	          allDatasets.add(idDataset);
-	        }
-	        
-	        // AGENT of the DATASET
-	        if (dataset.getCreator() != null && dataset.getCreator().getIdentifier() != null
-	            && dataset.getCreator().getIdentifier().getValue() != null) {
-	          FoafAgent creator = dataset.getCreator();
-//	          String identificator = creator.getId();
-	          String identificator = creator.getIdentifier().getValue();
-	          identificator = identificator.replaceAll("[^a-zA-Z0-9]", "");
-
-	          String idDs = "urn:ngsi-ld:id:" + identificator;     
-	          
-	          String agentType = "";
-	          if (creator.getType() != null) {
-	        	  agentType = creator.getType().getValue();
-	          }
-	         
-	          String api = urlCB + "entities/" + idDs;
-	          int status = restRequest(api, "", "GET");
-	          if (status != 200) {
-	          
-	            // ADDING AGENT CREATOR
-	            String type = "AgentDCAT-AP";
-	            String agent = firstValue(creator.getName());
-	      
-	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-		            + "\"name\": { "
-		            + "\"type\": \"Property\","
-		            + "\"value\": " + JSONObject.quote(agent) + " },"
-	                + "\"agentType\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(agentType) + " }"
-	                + " }";
-
-	            if (!allEntities.contains(data)) {
-	              allEntities.add(data);
-	            }
-
-	         }
-	        }
-
-	        if (dataset.getPublisher() != null && dataset.getPublisher().getIdentifier() != null
-	            && dataset.getPublisher().getIdentifier().getValue() != null) {
-	          FoafAgent publisher = dataset.getPublisher();
-//	          String identificator = publisher.getId();
-	          String identificator = publisher.getIdentifier().getValue();
-	          identificator = identificator.replaceAll("[^a-zA-Z0-9]", "");
-
-	          String idDs = "urn:ngsi-ld:id:" + identificator;     
-	          
-	          String agentType = "";
-	          if (publisher.getType() != null) {
-	        	  agentType = publisher.getType().getValue();
-	          }
-
-	          String api = urlCB + "entities/" + idDs;
-	          int status = restRequest(api, "", "GET");
-	          if (status != 200) {
-	          
-	            // ADDING AGENT PUBLISHER
-	            String type = "AgentDCAT-AP";
-	            String agent = firstValue(publisher.getName());
-	      
-	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-	                + "\"name\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(agent) + " },"
-	                + "\"agentType\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(agentType) + " }"
-	                + " }";
-
-	            if (!allEntities.contains(data)) {
-	              allEntities.add(data);
-	            }
-
-	          }
-	        }
-
-	        if (dataset.getRightsHolder() != null && dataset.getRightsHolder().getIdentifier() != null
-	            && dataset.getRightsHolder().getIdentifier().getValue() != null) {
-	          FoafAgent holder = dataset.getRightsHolder();
-	          
-//	          String identificator = holder.getId();
-	          String identificator = holder.getIdentifier().getValue();
-	          identificator = identificator.replaceAll("[^a-zA-Z0-9]", "");
-	          String idDs = "urn:ngsi-ld:id:" + identificator; 
-	          
-	          String agentType = "";
-	          if (holder.getType() != null) {
-	        	  agentType = holder.getType().getValue();
-	          }
-
-	          String api = urlCB + "entities/" + idDs;
-	          int status = restRequest(api, "", "GET");
-	          if (status != 200) {
-	          
-	            // ADDING AGENT RIGHTS HOLDER
-	            String type = "AgentDCAT-AP";
-	            String agent = firstValue(holder.getName());
-	      
-	            String data = "{ \"id\": \"" + idDs + "\", \"type\": \"" + type + "\","
-	                + "\"name\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(agent) + " },"
-	                + "\"agentType\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(agentType) + " }"
-	                + " }";
-
-	            if (!allEntities.contains(data)) {
-	              allEntities.add(data);
-	            }
-
-	          }
-	        }
-	        
-	                
-	        // ADDING DISTRIBUTIONS
-	        ArrayList<String> allDistributions = new ArrayList<String>();
-	        
-	        List<DcatDistribution> distributions = dataset.getDistributions();
-	        for (DcatDistribution d : distributions) {
-
-	          String idDistribution = "\"urn:ngsi-ld:Dataset:items:" + d.getId() + "\"";
-	          if (!allDistributions.contains(idDistribution)) {
-	            allDistributions.add(idDistribution);
-	          }
-
-	          String identificat = d.getId();
-	          
-	          // Read distribution fields directly from the Java bean.
-	          // distrib.optString("mediaType","") was previously used via an Idra API call,
-	          // but DcatProperty fields serialize as {"value":"..."} not plain strings,
-	          // so optString always returned "". Read from d directly like the other fields.
-	          String format = (d.getFormat() != null && d.getFormat().getValue() != null)
-	              ? d.getFormat().getValue() : "";
-	          String mediaType = (d.getMediaType() != null && d.getMediaType().getValue() != null)
-	              ? d.getMediaType().getValue() : "";
-	          String titleD = (d.getTitle() != null && d.getTitle().getValue() != null)
-	              ? d.getTitle().getValue() : "";
-	          String des = (d.getDescription() != null && d.getDescription().getValue() != null)
-	              ? d.getDescription().getValue() : "";
-	          String stat = (d.getStatus() != null) ? d.getStatus().toString() : "";
-	          
-	          String idDis = "urn:ngsi-ld:DistributionDCAT-AP:id:" + identificat;
-	                
-	          //String api = urlCB + "entities/" + idDis;
-	          //int status = restRequest(api, "", "GET");
-	          //if (status != 200) {
-	            
-	            String typeDis = "DistributionDCAT-AP";
-
-	            // Preserve natural-language characters (accents, punctuation, non-Latin
-	            // scripts). JSONObject.quote handles JSON escaping safely without losing
-	            // Unicode content.
-	            String titleDis = titleD;
-	            String descr = des;
-
-	            // Build multilingual title/description for distribution
-	            List<DcatDetails> disDetails = d.getDistributionDetails();
-	            String titleDisJson;
-	            String descrDisJson;
-	            if (disDetails != null && !disDetails.isEmpty()) {
-	                StringBuilder titleMap = new StringBuilder();
-	                StringBuilder descMap = new StringBuilder();
-	                boolean firstT = true, firstD2 = true;
-	                for (DcatDetails det : disDetails) {
-	                    String lang = det.getLanguage();
-	                    if (lang == null || lang.isBlank()) continue;
-	                    String tv = det.getTitle();
-	                    if (tv != null && !tv.isBlank()) {
-	                        if (!firstT) titleMap.append(",");
-	                        titleMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(tv));
-	                        firstT = false;
-	                    }
-	                    String dv = det.getDescription();
-	                    if (dv != null && !dv.isBlank()) {
-	                        if (!firstD2) descMap.append(",");
-	                        descMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(dv));
-	                        firstD2 = false;
-	                    }
-	                }
-	                titleDisJson = firstT
-	                    ? "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(titleDis) + "]},"
-	                    : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
-	                descrDisJson = firstD2
-	                    ? "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},"
-	                    : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
-	            } else {
-	                titleDisJson = "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(titleDis) + "]},";
-	                descrDisJson = "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},";
-	            }
-
-	            // H5: use isEmpty() — != "" confronta riferimenti, non contenuto
-	            // H7: JSONArray garantisce serializzazione JSON valida
-	            JSONArray languageList = new JSONArray();
-	            for (DcatProperty lang : d.getLanguage()) {
-	                if (lang.getValue() != null && !lang.getValue().isEmpty())
-	                    languageList.put(lang.getValue());
-	            }
-	            
-	            String byteSize = "";
-	            if (d.getByteSize() != null) {
-	            	byteSize = d.getByteSize().getValue();
-	            }
-	            String checksum = "";
-	            if (d.getChecksum() != null) {
-	            	//checksum = d.getChecksum().getChecksumValue().getValue().replaceAll("\"", "");
-	            	checksum = d.getChecksum().getChecksumValue().getValue();
-	            }
-
-	            // aggiungere dateCreated e dateModified come TIMESTAMP della Entity?
-	            
-	            String releaseDateDisJson = "";
-	            if (d.getReleaseDate() != null && d.getReleaseDate().getValue() != null && !d.getReleaseDate().getValue().isEmpty()) {
-	                releaseDateDisJson = "\"releaseDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(d.getReleaseDate().getValue()) + "}}, ";
-	            }
-	            String modifiedDateDisJson = "";
-	            if (d.getUpdateDate() != null && d.getUpdateDate().getValue() != null && !d.getUpdateDate().getValue().isEmpty()) {
-	                modifiedDateDisJson = "\"modifiedDate\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(d.getUpdateDate().getValue()) + "}}, ";
-	            }
-	            String accessUrlVal = (d.getAccessUrl() != null && d.getAccessUrl().getValue() != null)
-	            ? d.getAccessUrl().getValue() : "";
-	            String downloadUrlVal = (d.getDownloadUrl() != null && d.getDownloadUrl().getValue() != null)
-	            ? d.getDownloadUrl().getValue() : "";
-	            String licenseNameVal = (d.getLicense() != null && d.getLicense().getName() != null
-	                && d.getLicense().getName().getValue() != null)
-	            ? d.getLicense().getName().getValue() : "";
-	            String rightsVal = (d.getRights() != null && d.getRights().getValue() != null)
-	            ? d.getRights().getValue() : "";
-	            JSONArray applicableLegislationDis = new JSONArray();
-	            if (d.getApplicableLegislation() != null) {
-	                for (DcatProperty al : d.getApplicableLegislation()) {
-	                    if (al.getValue() != null && !al.getValue().isEmpty())
-	                        applicableLegislationDis.put(al.getValue());
-	                }
-	            }
-	            String dataDis = "{ \"id\": \"" + idDis + "\", \"type\": \"" + typeDis + "\","
-	                + descrDisJson
-	                + titleDisJson
-	                + releaseDateDisJson
-	                + modifiedDateDisJson
-	                + "\"accessUrl\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": [ " + JSONObject.quote(accessUrlVal) + " ]"
-	                + " },"
-	                + "\"downloadURL\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": [ " + JSONObject.quote(downloadUrlVal) + " ]"
-	                + " },"
-	                + "\"license\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(licenseNameVal)
-	                + " },"
-	                + "\"format\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(format)
-	                + " },"
-	                + "\"mediaType\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(mediaType)
-	                + " },"
-	                + "\"rights\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(rightsVal)
-	                + " },"
-	                + "\"language\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " +  languageList.toString()    
-	                + " },"
-	                + "\"byteSize\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(byteSize)
-	                + " },"
-	                + "\"checksum\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(checksum)
-	                + " },"
-	                + "\"status\": { "
-	                + "\"type\": \"Property\","
-	                + "\"value\": " + JSONObject.quote(stat)
-	                + " }"
-	                + (applicableLegislationDis.length() > 0
-	                    ? ",\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
-	                        + applicableLegislationDis.toString() + "}"
-	                    : "")
-	                + " }";
-	            	
-	            if (!allEntities.contains(dataDis)) {
-	              allEntities.add(dataDis);
-	            }
-	          //}
-	        } 
-
-	        String idDs = "urn:ngsi-ld:Dataset:id:" + dataset.getId();     
-	        //String api = urlCB + "entities/" + idDs;
-	        //int status = restRequest(api, "", "GET");
-	        //if (status != 200) {
-	        
-	          // ADDING DATASET — preserve UTF-8 / non-Latin content. JSON escaping is
-	          // handled by JSONObject.quote; the old replaceAll("[^a-zA-Z0-9]", " ")
-	          // stripped accents and unicode chars from natural-language fields.
-	          String des = dataset.getDescription().getValue();
-	          String descr = des;
-
-	          String t = dataset.getTitle().getValue();
-	          String title = t;
-
-	          // Build multilingual title/description for dataset
-	          List<DcatDetails> dsDetails = dataset.getDatasetDetails();
-	          String titleDsJson;
-	          String descrDsJson;
-	          if (dsDetails != null && !dsDetails.isEmpty()) {
-	              StringBuilder titleMap = new StringBuilder();
-	              StringBuilder descMap = new StringBuilder();
-	              boolean firstT = true, firstD2 = true;
-	              for (DcatDetails det : dsDetails) {
-	                  String lang = det.getLanguage();
-	                  if (lang == null || lang.isBlank()) continue;
-	                  String tv = det.getTitle();
-	                  if (tv != null && !tv.isBlank()) {
-	                      if (!firstT) titleMap.append(",");
-	                      titleMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(tv));
-	                      firstT = false;
-	                  }
-	                  String dv = det.getDescription();
-	                  if (dv != null && !dv.isBlank()) {
-	                      if (!firstD2) descMap.append(",");
-	                      descMap.append(JSONObject.quote(lang)).append(":").append(JSONObject.quote(dv));
-	                      firstD2 = false;
-	                  }
-	              }
-	              titleDsJson = firstT
-	                  ? "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(title) + "]},"
-	                  : "\"title\":{\"type\":\"Property\",\"value\":{" + titleMap + "}},";
-	              descrDsJson = firstD2
-	                  ? "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},"
-	                  : "\"description\":{\"type\":\"Property\",\"value\":{" + descMap + "}},";
-	          } else {
-	              titleDsJson = "\"title\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(title) + "]},";
-	              descrDsJson = "\"description\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(descr) + "},";
-	          }
-
-	          String creator = "";
-	          if (dataset.getCreator() != null) {
-	            creator = firstValue(dataset.getCreator().getName());
-	          }
-	          String publisher = "";
-	          if (dataset.getPublisher() != null) {
-	            publisher = firstValue(dataset.getPublisher().getName());
-	          }
-	          
-	          // H6 + H7: null-safe contact email, JSONArray for valid JSON
-	          JSONArray contacts = new JSONArray();
-	          for (VcardOrganization v : dataset.getContactPoint()) {
-	              if (v.getHasEmail() != null && v.getHasEmail().getValue() != null
-	                      && !v.getHasEmail().getValue().isEmpty()) {
-	                  contacts.put(v.getHasEmail().getValue());
-	              }
-	          }
-//	          if (contacts.size() == 0)
-//	        	  contacts.add("");
-	          
-	          // Emit themes preferring the SKOS Concept URI (e.g. EU data-theme authority)
-	          // over a free-text label. Falls back to the preferred label when no URI is
-	          // available. Old behaviour pushed only the label, losing the authority link.
-	          JSONArray themes = new JSONArray();
-	          for (SkosConceptTheme tema : dataset.getTheme()) {
-	              String uri = tema.getResourceUri();
-	              if (uri != null && !uri.isEmpty()) {
-	                  themes.put(uri);
-	                  continue;
-	              }
-	              for (SkosPrefLabel label : tema.getPrefLabel()) {
-	                  if (label.getValue() != null && !label.getValue().isEmpty()) {
-	                      themes.put(label.getValue());
-	                  }
-	              }
-	          }
-	          if (themes.length() == 0) themes.put("");
-	          
-	          // Build multilingual keywords
-	          String keywordDsJson;
-	          List<DcatKeyword> kwDetails = dataset.getKeywordDetails();
-	          if (kwDetails != null && !kwDetails.isEmpty()) {
-	              Map<String, List<String>> kwByLang = new LinkedHashMap<>();
-	              for (DcatKeyword kw : kwDetails) {
-	                  String val = kw.getValue();
-	                  if (val == null || val.isBlank()) continue;
-	                  String lang = (kw.getLanguage() != null && !kw.getLanguage().isBlank())
-	                                ? kw.getLanguage() : "und";
-	                  kwByLang.computeIfAbsent(lang, k -> new ArrayList<>()).add(val);
-	              }
-	              if (!kwByLang.isEmpty()) {
-	                  StringBuilder kwMap = new StringBuilder();
-	                  boolean firstLang = true;
-	                  for (Map.Entry<String, List<String>> entry : kwByLang.entrySet()) {
-	                      if (!firstLang) kwMap.append(",");
-	                      kwMap.append(JSONObject.quote(entry.getKey())).append(":[")
-	                           .append(entry.getValue().stream()
-	                               .map(v -> JSONObject.quote(v))
-	                               .collect(Collectors.joining(",")))
-	                           .append("]");
-	                      firstLang = false;
-	                  }
-	                  keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":{" + kwMap + "}},";
-	              } else {
-	                  ArrayList<String> keywords = new ArrayList<>();
-	                  for (String keyw : dataset.getKeywords()) {
-	                      if (!keyw.isEmpty()) keywords.add(JSONObject.quote(keyw));
-	                  }
-	                  if (keywords.isEmpty()) keywords.add("\"\"");
-	                  keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
-	              }
-	          } else {
-	              ArrayList<String> keywords = new ArrayList<>();
-	              for (String keyw : dataset.getKeywords()) {
-	                  if (!keyw.isEmpty()) keywords.add(JSONObject.quote(keyw));
-	              }
-	              if (keywords.isEmpty()) keywords.add("\"\"");
-	              keywordDsJson = "\"keyword\":{\"type\":\"Property\",\"value\":" + keywords + "},";
-	          }
-	          // H5 + H7: isEmpty() check, JSONArray serialization
-	          JSONArray documentation = new JSONArray();
-	          for (DcatProperty doc : dataset.getDocumentation()) {
-	              if (doc.getValue() != null && !doc.getValue().isEmpty())
-	                  documentation.put(doc.getValue());
-	          }
-
-	          JSONArray language = new JSONArray();
-	          for (DcatProperty lan : dataset.getLanguage()) {
-	              if (lan.getValue() != null && !lan.getValue().isEmpty())
-	                  language.put(lan.getValue());
-	          }
-	          JSONArray otherIdentifier = new JSONArray();
-	          for (DcatProperty otId : dataset.getOtherIdentifier()) {
-	              if (otId.getValue() != null && !otId.getValue().isEmpty())
-	                  otherIdentifier.put(otId.getValue());
-	          }
-	          JSONArray provenance = new JSONArray();
-	          for (DcatProperty pr : dataset.getProvenance()) {
-	              if (pr.getValue() != null && !pr.getValue().isEmpty())
-	                  provenance.put(pr.getValue());
-	          }
-	          String frequency = "";
-	          if (dataset.getFrequency() != null) {
-	        	  frequency = dataset.getFrequency().getValue();
-	          }
-	          
-//	          if (dataset.getIsVersionOf() != null) {
-//	        	  System.out.println("isVersOf: " + dataset.getIsVersionOf());
-//	          }
-//	          if (dataset.getHasVersion() != null) {
-//	        	  System.out.println("hasVers: " + dataset.getHasVersion());
-//	          }
-//	          ArrayList<String> hasVersion = new ArrayList<String>();
-//	          for (DcatProperty hasV: dataset.getHasVersion()) {
-//	          	if(hasV.getValue() != "")
-//	          		hasVersion.add("\"" + hasV.getValue() + "\"");
-//	          }
-	          String startDate = "";
-	          String endDate = "";
-	          if (dataset.getTemporalCoverage() != null && !dataset.getTemporalCoverage().isEmpty()) {
-	        	  if (dataset.getTemporalCoverage().get(0).getStartDate() != null) {
-	        		  startDate = dataset.getTemporalCoverage().get(0).getStartDate().getValue();
-	        	  }
-	        	  if (dataset.getTemporalCoverage().get(0).getEndDate() != null) {
-	        		  endDate = dataset.getTemporalCoverage().get(0).getEndDate().getValue();
-	        	  }
-	          }
-	          String version = "";
-	          if (dataset.getVersion() != null) {
-	        	  version = dataset.getVersion().getValue();
-	          }
-	          JSONArray versionNotes = new JSONArray();
-	          for (DcatProperty verNotes : dataset.getVersionNotes()) {
-	              if (verNotes.getValue() != null && !verNotes.getValue().isEmpty())
-	                  versionNotes.put(verNotes.getValue());
-	          }
-
-	          // dateCreated è la creazione della Entity
-	          // dateModified Timestamp of the last modification of the entity. 
-	          // This will usually be allocated by the storage platform
-	   
-	          // ---------------- DCAT Dataset entity assembly (NGSI-LD) ----------------
-	          // Build the body as a list of "key":value fragments (each WITHOUT trailing
-	          // comma) then join with ", ". Empty fragments are skipped — no empty-value
-	          // properties are pushed to Orion-LD.
-	          JSONArray applicableLegislationDs = new JSONArray();
-	          if (dataset.getApplicableLegislation() != null) {
-	              for (DcatProperty al : dataset.getApplicableLegislation()) {
-	                  if (al.getValue() != null && !al.getValue().isEmpty())
-	                      applicableLegislationDs.put(al.getValue());
-	              }
-	          }
-	          JSONArray hvdCategoryDs = new JSONArray();
-	          if (dataset.getHVDCategory() != null) {
-	              for (DcatProperty hc : dataset.getHVDCategory()) {
-	                  if (hc.getValue() != null && !hc.getValue().isEmpty())
-	                      hvdCategoryDs.put(hc.getValue());
-	              }
-	          }
-
-	          String accessRightsValue = (dataset.getAccessRights() != null
-	              && dataset.getAccessRights().getValue() != null)
-	                  ? dataset.getAccessRights().getValue() : "";
-	          String landingPageValue = (dataset.getLandingPage() != null
-	              && dataset.getLandingPage().getValue() != null)
-	                  ? dataset.getLandingPage().getValue() : "";
-	          String sourceValue = (dataset.getSource() != null && !dataset.getSource().isEmpty()
-	              && dataset.getSource().get(0).getValue() != null)
-	                  ? dataset.getSource().get(0).getValue() : landingPageValue;
-
-	          String typeDs = "Dataset";
-	          java.util.List<String> dsParts = new java.util.ArrayList<>();
-	          // Stripped trailing commas from these pre-built fragments to compose cleanly.
-	          String descrCore = stripTrailingComma(descrDsJson);
-	          if (!descrCore.isEmpty()) dsParts.add(descrCore);
-	          String titleCore = stripTrailingComma(titleDsJson);
-	          if (!titleCore.isEmpty()) dsParts.add(titleCore);
-	          if (!landingPageValue.isEmpty())
-	              dsParts.add("\"landingPage\":{\"type\":\"Property\",\"value\":[" + JSONObject.quote(landingPageValue) + "]}");
-	          dsParts.add("\"datasetDistribution\":{\"type\":\"Property\",\"value\":["
-	              + String.join(",", allDistributions) + "]}");
-	          dsParts.add("\"contactPoint\":{\"type\":\"Property\",\"value\":" + contacts.toString() + "}");
-	          String keywordCore = stripTrailingComma(keywordDsJson);
-	          if (!keywordCore.isEmpty()) dsParts.add(keywordCore);
-	          dsParts.add("\"theme\":{\"type\":\"Property\",\"value\":" + themes.toString() + "}");
-	          dsParts.add("\"documentation\":{\"type\":\"Property\",\"value\":" + documentation.toString() + "}");
-	          dsParts.add("\"language\":{\"type\":\"Property\",\"value\":" + language.toString() + "}");
-	          dsParts.add("\"otherIdentifier\":{\"type\":\"Property\",\"value\":" + otherIdentifier.toString() + "}");
-	          dsParts.add("\"provenance\":{\"type\":\"Property\",\"value\":" + provenance.toString() + "}");
-	          dsParts.add("\"versionNotes\":{\"type\":\"Property\",\"value\":" + versionNotes.toString() + "}");
-	          if (version != null && !version.isEmpty())
-	              dsParts.add("\"version\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(version) + "}");
-	          if (!startDate.isEmpty() && !endDate.isEmpty())
-	              dsParts.add("\"temporal\":{\"type\":\"Property\",\"value\":[{\"@type\":\"DateTime\",\"@value\":"
-	                  + JSONObject.quote(startDate) + "},{\"@type\":\"DateTime\",\"@value\":" + JSONObject.quote(endDate) + "}]}");
-	          if (!accessRightsValue.isEmpty())
-	              dsParts.add("\"accessRights\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(accessRightsValue) + "}");
-	          if (dataset.getReleaseDate() != null && dataset.getReleaseDate().getValue() != null
-	              && !dataset.getReleaseDate().getValue().isEmpty())
-	              dsParts.add("\"dateCreated\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":"
-	                  + JSONObject.quote(dataset.getReleaseDate().getValue()) + "}}");
-	          if (dataset.getUpdateDate() != null && dataset.getUpdateDate().getValue() != null
-	              && !dataset.getUpdateDate().getValue().isEmpty())
-	              dsParts.add("\"dateModified\":{\"type\":\"Property\",\"value\":{\"@type\":\"DateTime\",\"@value\":"
-	                  + JSONObject.quote(dataset.getUpdateDate().getValue()) + "}}");
-	          if (publisher != null && !publisher.isEmpty())
-	              dsParts.add("\"publisher\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(publisher) + "}");
-	          if (creator != null && !creator.isEmpty())
-	              dsParts.add("\"creator\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(creator) + "}");
-	          if (frequency != null && !frequency.isEmpty())
-	              dsParts.add("\"frequency\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(frequency) + "}");
-	          if (sourceValue != null && !sourceValue.isEmpty())
-	              dsParts.add("\"source\":{\"type\":\"Property\",\"value\":" + JSONObject.quote(sourceValue) + "}");
-	          if (applicableLegislationDs.length() > 0)
-	              dsParts.add("\"applicableLegislation\":{\"type\":\"Property\",\"value\":"
-	                  + applicableLegislationDs.toString() + "}");
-	          if (hvdCategoryDs.length() > 0)
-	              dsParts.add("\"hvdCategory\":{\"type\":\"Property\",\"value\":"
-	                  + hvdCategoryDs.toString() + "}");
-
-	          String dataDs = "{\"id\":\"" + idDs + "\",\"type\":\"" + typeDs + "\","
-	              + String.join(",", dsParts) + "}";
-	          
-	          if (!allEntities.contains(dataDs)) {
-	            allEntities.add(dataDs);
-	          }
-	          
-	      }
-
-	      int identificator = node.getId();
-	      String id = "urn:ngsi-ld:Catalogue:id:" + identificator;
-	      String api = urlCB + "entities/" + id;
-          //String api = urlCB + "entities/";
-	      //int status = restRequest(api, "", "GET");
-	      //if (status != 200) {
-
-	        ZonedDateTime dateModified = node.getLastUpdateDate();
-	        DateTime modif = new DateTime(dateModified.toInstant().toEpochMilli(),
-		            DateTimeZone.forTimeZone(TimeZone.getTimeZone(dateModified.getZone())));
-	        
-//	        System.out.println("REG DATE: " + node.getRegisterDate());
-//	        String regDate = "";
-//	        if (node.getRegisterDate() != null) {
-//		        ZonedDateTime dateCreate = node.getRegisterDate();
-//		        DateTime created = new DateTime(dateCreate.toInstant().toEpochMilli(),
-//		            DateTimeZone.forTimeZone(TimeZone.getTimeZone(dateCreate.getZone())));
-//		        regDate = created.toString();
-//	        }
-
-//	        System.out.println(" ----------- location :" + node.getLocation());
-//	        System.out.println(" ----------- location descrp:" + node.getLocationDescription());
-	        // Preserve UTF-8 content; JSONObject.quote handles JSON escaping.
-	        String description = node.getDescription() != null ? node.getDescription() : "";
-	        String name = node.getName() != null ? node.getName() : "";
-
-	        String type = "CatalogueDCAT-AP";
-	        String data = "{ \"id\": \"" + id + "\", \"type\": \"" + type + "\","
-	            + "\"description\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": " + JSONObject.quote(description) + " },"
-	            + "\"publisher\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": " + JSONObject.quote(node.getPublisherName()) + " },"
-	            + "\"title\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": [ " + JSONObject.quote(name) + " ]"
-	            + " }, "
-	            + "\"name\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": \"Catalogue\" },"
-	            + "\"alternateName\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": \"\" },"
-	            + "\"homepage\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": " + JSONObject.quote(node.getHomepage()) + " },"
-	            + "\"dataProvider\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": \"\" },"
-	            + "\"source\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": " + JSONObject.quote(node.getHost()) + " },"
-//				+ "\"dateCreated\": { "
-//				+ "\"type\": \"Property\","
-//				+ "\"value\": { "
-//				+ "\"@type\": \"DateTime\","
-//				+ "\"@value\": \"" + regDate + "\"  }"
-//				+ " }, "
-	            + "\"dateModified\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": { "
-	            + "\"@type\": \"DateTime\","
-	            + "\"@value\": \"" + modif + "\"  }"
-	            + " }, "
-	            + "\"dataset\": { "
-	            + "\"type\": \"Relationship\","
-	            + "\"object\": [" + String.join(",", allDatasets) + "]"
-	            + " }, "
-	            + "\"language\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": [ " + JSONObject.quote(node.getCountry()) + " ]"
-	            + " } "
-	            + " }";
-	        
-	        if (!allEntities.contains(data)) {
-	          allEntities.add(data);
-	        }
-
-	      
-	      identificator = node.getId();
-	      id = "urn:ngsi-ld:id:" + identificator;   
-	      api = urlCB + "entities/" + id;
-	      //int status = restRequest(api, "", "GET");
-	      //if (status != 200) {
-	        type = "AgentDCAT-AP";
-	        String agent = node.getPublisherName();
-	        identificator = node.getId();
-	        id = "urn:ngsi-ld:id:" + identificator;
-	        data = "{ \"id\": \"" + id + "\", \"type\": \"" + type + "\","
-	            + "\"name\": { "
-	            + "\"type\": \"Property\","
-	            + "\"value\": " + JSONObject.quote(agent) + " }"
-	            + " }";
-	        
-	        if (!allEntities.contains(data)) {
-	          allEntities.add(data);
-	        }
-
-	        // DCAT-AP 3: add creator agent for catalogue if present
-	        if (node.getCreator() != null) {
-	          FoafAgent catCreator = node.getCreator();
-	          if (catCreator.getIdentifier() != null && catCreator.getIdentifier().getValue() != null) {
-	            String creatorId = catCreator.getIdentifier().getValue().replaceAll("[^a-zA-Z0-9]", "");
-	            String creatorUrn = "urn:ngsi-ld:id:" + creatorId;
-	            String creatorName = firstValue(catCreator.getName());
-	            String creatorType = catCreator.getType() != null ? catCreator.getType().getValue() : "";
-	            String creatorData = "{ \"id\": \"" + creatorUrn + "\", \"type\": \"AgentDCAT-AP\","
-	                + "\"name\": { \"type\": \"Property\", \"value\": " + JSONObject.quote(creatorName) + " },"
-	                + "\"agentType\": { \"type\": \"Property\", \"value\": " + JSONObject.quote(creatorType) + " }"
-	                + " }";
-	            if (!allEntities.contains(creatorData)) {
-	              allEntities.add(creatorData);
-	            }
-	          }
-	        }
-
-	      // POST CREATE request in BATCH
-	      int status = 200;
-	      api = urlCB + "entityOperations/create";
-	      if (allEntities.size() > 200) {
-	    	
-	        status = postRequestWithCheck(allEntities, api, 200);
-	        logger.info("STATUS CREATE CATALOGUE IN THE CB: " + status);
-	      } else {
-	    	// POST CREATE BATCH 
-			logger.info("PAYLOAD TO CB (" + allEntities.size() + " entities): " + allEntities.toString());
-	        status = restRequest(api, allEntities.toString(), "POST");
-	        logger.info("STATUS CREATE CATALOGUE IN THE CB: " + status);
-	      }
-//	  if (status != 200 && status != 207 && status != 204 
-//	        && status != 201 && status != 301) {
-//	      throw new Exception("------------ STATUS POST - CONTEXT BROKER: " + status);
-//	  }
-	  return status;
-	}
+    String api = buildContextBrokerApiBase(config.getContextBrokerUrl());
+    java.util.concurrent.locks.ReentrantLock lock=BROKER_LOCKS.computeIfAbsent(api,key->new java.util.concurrent.locks.ReentrantLock(true));
+    lock.lockInterruptibly();
+    try {
+    RestTemplate client = new RestTemplate();
+    OdmsCatalogue node = client.getForObject(idraBasePath + "/Idra/api/v1/client/catalogues/" + config.getCatalogueId() + "?withImage=false", OdmsCatalogue.class);
+    List<JSONObject> entities = NgsiDcatMapper.catalogue(node, getAllCatalogueDatasets(client, config.getCatalogueId()));
+    Set<String> previous = ownedIds(api, config.getCatalogueId());
+    List<String> payload = entities.stream().map(JSONObject::toString).collect(Collectors.toList());
+    int status = postRequestWithCheck(payload, api + "entityOperations/upsert?options=replace", 200);
+    if (status == 207 || status < 200 || status >= 300) return status;
+    int pruned = pruneOwned(api, config.getCatalogueId(), previous,
+        entities.stream().map(e -> e.getString("id")).collect(Collectors.toSet()));
+    return pruned == 204 ? status : pruned;
+    } finally { lock.unlock(); }
+  }
 	
 
 	  /**
@@ -823,115 +117,24 @@ public class CatalogueService  {
 	  // * @throws MalformedURLException 
 	   */
 	  public int deleteCatalogueFromCb(Configurations config) throws MalformedURLException, Exception {
-		  
-		  String nodeId = config.getCatalogueId();
-		  String urlCB = buildContextBrokerApiBase(config.getContextBrokerUrl());
-	      
-	      // I get the Catalogue through Idra API
-	      RestTemplate restTemplate = new RestTemplate();
-	      ResponseEntity<String> result = restTemplate.getForEntity(idraBasePath + "/Idra/api/v1/" 
-	      + "/client/catalogues/" + nodeId, String.class); 
-	      logger.info("RESULT GET CATALOGUE: " + result.getStatusCodeValue());
-	      
-	      OdmsCatalogue node = restTemplate
-	    	      .getForObject(idraBasePath + "/Idra/api/v1/" + "/client/catalogues/" + nodeId, OdmsCatalogue.class);
-	      logger.info("CATALOGUE NAME to delete: " + node.getName());
-
-	      // I get all datasets through Idra API (paginated)
-	      List<DcatDataset> datasets = getAllCatalogueDatasets(restTemplate, nodeId);
-	      logger.info("Datasets collected for deletion: " + datasets.size());
-
-	      // DELETING
-	      ArrayList<String> listId = new ArrayList<String>();
-	  
-	      // CATALOGUE DELETING
-	      int identificator = node.getId();
-	      String id = "\"urn:ngsi-ld:Catalogue:id:" + identificator + "\"";
-	      listId.add(id);
-	      
-	      // CATALOGUE AGENT DELETING
-	      identificator = node.getId();
-	      id = "\"urn:ngsi-ld:id:" + identificator + "\"";
-	      listId.add(id);
-	      
-	      // DATASETS DELETING 
-	      //List<DcatDataset> datasets = MetadataCacheManager.getAllDatasetsByOdmsCatalogue(node.getId());
-	      for (DcatDataset dataset : datasets) {   
-	        String identif = dataset.getId();
-	        String idDs = "\"urn:ngsi-ld:Dataset:id:" + identif + "\"";
-	        if (!listId.contains(idDs)) {
-	          listId.add(idDs);
-	        }
-	        
-	        // DATASETS AGENTS DELETING 
-	        // 1. CREATORS
-	        if (dataset.getCreator() != null && dataset.getCreator().getIdentifier() != null
-	            && dataset.getCreator().getIdentifier().getValue() != null) {
-	          identif = dataset.getCreator().getIdentifier().getValue();
-	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
-	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
-	          if (!listId.contains(idDs)) {
-	            listId.add(idDs);
-	            
-	          }
-	        }
-	        // 2. PUBLISHERS
-	        if (dataset.getPublisher() != null && dataset.getPublisher().getIdentifier() != null
-	            && dataset.getPublisher().getIdentifier().getValue() != null) {
-	          identif = dataset.getPublisher().getIdentifier().getValue();
-	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
-	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
-	          if (!listId.contains(idDs)) {
-	            listId.add(idDs);
-	            
-	          }
-	        }
-	        // 3. RIGHT HOLDERS
-	        if (dataset.getRightsHolder() != null && dataset.getRightsHolder().getIdentifier() != null
-	            && dataset.getRightsHolder().getIdentifier().getValue() != null) {
-	          identif = dataset.getRightsHolder().getIdentifier().getValue();
-	          identif = identif.replaceAll("[^a-zA-Z0-9]", "");
-	          idDs = "\"urn:ngsi-ld:id:" + identif + "\"";
-	          if (!listId.contains(idDs)) {
-	            listId.add(idDs);
-	            
-	          }
-	        }
-	        
-	        // DISTRIBUTIONS DELETING
-	        List<DcatDistribution> distributions = dataset.getDistributions();
-	        for (DcatDistribution d : distributions) {
-	          String identificat = d.getId();
-	          String idDis = "\"urn:ngsi-ld:DistributionDCAT-AP:id:" + identificat + "\"";
-
-	          if (!listId.contains(idDis)) {
-	            listId.add(idDis);
-	            
-	          }
-
-	        } 
-	      }
-
-	      String data =  listId.toString();
-	      String api = urlCB + "entityOperations/delete";
-	      int status = 200;
-	      logger.info("Entity IDs queued for deletion from CB: " + listId.size());
-	      if (listId.size() > 200) {
-	    	
-	        status = postRequestWithCheck(listId, api, 200);
-	        
-	      } else {
-	    	  
-	    	// POST DELETE BATCH 
-	        status = restRequest(api, data, "POST");
-	        logger.info("STATUS DELETE " + status);
-//	        if (status != 200 && status != 207 && status != 204 
-//	            && status != 201 && status != 301) {
-//	          throw new Exception("------------ STATUS DELETE DISTRIBUTION - CONTEXT BROKER: " + status);
-//	        }
-	      }
-	      return status;
-	  }
+    String api = buildContextBrokerApiBase(config.getContextBrokerUrl());
+    java.util.concurrent.locks.ReentrantLock lock=BROKER_LOCKS.computeIfAbsent(api,key->new java.util.concurrent.locks.ReentrantLock(true));
+    lock.lockInterruptibly();
+    try {
+    RestTemplate client = new RestTemplate();
+    Set<String> owned = ownedIds(api, config.getCatalogueId());
+    try {
+      OdmsCatalogue node = client.getForObject(idraBasePath + "/Idra/api/v1/client/catalogues/" + config.getCatalogueId() + "?withImage=false", OdmsCatalogue.class);
+      List<JSONObject> entities = NgsiDcatMapper.catalogue(node, getAllCatalogueDatasets(client, config.getCatalogueId()));
+      owned.addAll(entities.stream().map(e -> e.getString("id")).collect(Collectors.toSet()));
+    } catch (HttpClientErrorException.NotFound inactiveOrRemoved) {
+      // ClientApi intentionally hides inactive catalogues. Ownership is the persistent
+      // deletion inventory and must remain usable after KEEP or local data removal.
+      logger.info("Catalogue {} is not visible in ClientApi; deleting its owned entities", config.getCatalogueId());
+    }
+    return pruneOwned(api, config.getCatalogueId(), owned, Collections.emptySet());
+    } finally { lock.unlock(); }
+  }
 	  
 
 	  /**
@@ -940,47 +143,77 @@ public class CatalogueService  {
 	   * 
 	   */
 	  public int postRequestWithCheck(List<String> listId, String api, int maxNumberOfEntities) throws Exception {
-	    String data =  listId.toString();
-	    
-	    int r = (listId.size()) % maxNumberOfEntities;
-	    int tot = listId.size() - r;
-	    int numberOfPost = tot / maxNumberOfEntities;
-	    
-	    int i = 0;
-	    int l = maxNumberOfEntities - 1; // 199
-	    
-	    int status = 200;
-	    
-	    for (int k = 0; k < numberOfPost; k++) {
-	      List<String> list = listId.subList(i, l + 1);
-	      data =  list.toString();
+    if (maxNumberOfEntities <= 0) throw new IllegalArgumentException("Batch size must be positive");
+    int result = 204;
+    for (int offset = 0; offset < listId.size();) {
+      int end = offset;
+      long bytes = 2; // JSON array brackets
+      while (end < listId.size() && end - offset < maxNumberOfEntities) {
+        long next = listId.get(end).getBytes(java.nio.charset.StandardCharsets.UTF_8).length
+            + (end == offset ? 0 : 1);
+        if (end > offset && bytes + next > MAX_BATCH_BYTES) break;
+        bytes += next;
+        end++;
+      }
+      String data = "[" + String.join(",", listId.subList(offset, end)) + "]";
+      int status = restRequest(api, data, "POST");
+      // Multi-status must not be overwritten by a later successful batch.
+      if (status == 207) result = 207;
+      else if (status < 200 || status >= 300) return status;
+      offset = end;
+    }
+    return result == 207 ? 502 : result;
+  }
+	  
+  /**
+   * Deletes the catalogue's owned entities that are not in keep, then re-reads ownership and
+   * deletes any straggler: offset pages are not a snapshot and a loaded broker can return
+   * short pages, so the first inventory alone left 1611 of 87509 entities behind (plan62, S034).
+   * Returns 502 if owned entities outside keep survive every round.
+   */
+  private int pruneOwned(String api, String catalogueId, Set<String> candidates, Set<String> keep)
+      throws Exception {
+    Set<String> pending = new HashSet<>(candidates);
+    pending.removeAll(keep);
+    for (int round = 1; round <= PRUNE_ROUNDS; round++) {
+      if (!pending.isEmpty()) {
+        int status = postRequestWithCheck(pending.stream().map(JSONObject::quote)
+            .collect(Collectors.toList()), api + "entityOperations/delete", 200);
+        if (status < 200 || status >= 300) return status;
+      }
+      pending = ownedIds(api, catalogueId);
+      pending.removeAll(keep);
+      if (pending.isEmpty()) return 204;
+      logger.warn("{} entities still owned by catalogue {} after deletion round {}",
+          pending.size(), catalogueId, round);
+    }
+    logger.error("Catalogue {} still owns {} stale entities after {} deletion rounds",
+        catalogueId, pending.size(), PRUNE_ROUNDS);
+    return 502;
+  }
 
-	      status = restRequest(api, data, "POST");
-	      
-	      if (status != 200 && status != 207 && status != 204 
-	          && status != 201 && status != 301) {
-	    	  return status;
-//	        throw new Exception("------------ STATUS POST - CONTEXT BROKER: " + status);
-	      }
-	      i += maxNumberOfEntities;
-	      l += maxNumberOfEntities;
-	    }
-	  
-	    List<String> list = listId.subList(i, (listId.size()));
-	    if (list.size() != 0) {
-		    data =  list.toString(); 
-	
-		    status = restRequest(api, data, "POST");
-		    if (status != 200 && status != 207 && status != 204 
-		        && status != 201 && status != 301) {
-		    	return status;
-//		      throw new Exception("------------ STATUS POST - CONTEXT BROKER: " + status);
-		    }
-	    }
-	    return status;
-	  }	
-	  
-	  private String firstValue(List<DcatProperty> properties) {
+	  private Set<String> ownedIds(String api, String catalogueId) throws Exception {
+    Map<String,String> headers = new HashMap<>();
+    headers.put("Accept", "application/json");
+    headers.put("Link", "<" + dcatContextUrl + ">; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\"");
+    RestClient client = new RestClientImpl();
+    Set<String> ids = new HashSet<>();
+    String query = java.net.URLEncoder.encode("idraCatalogueId==\"" + catalogueId + "\"", java.nio.charset.StandardCharsets.UTF_8);
+    for (int offset = 0;; offset += 1000) {
+      // Only the ownership attribute is needed: full entities made large inventories heavy.
+      HttpResponse response = client.sendGetRequest(api + "entities?q=" + query
+          + "&attrs=idraCatalogueId&limit=1000&offset=" + offset, headers);
+      int status = client.getStatus(response);
+      String body = client.getHttpResponseBody(response);
+      if (status != 200) throw new IllegalStateException("Cannot enumerate owned NGSI-LD entities: HTTP " + status);
+      JSONArray page = new JSONArray(body);
+      for (int i=0;i<page.length();i++) ids.add(page.getJSONObject(i).getString("id"));
+      // A short page is not proof of the end under load; only an empty page is.
+      if (page.length()==0) return ids;
+    }
+  }
+
+  private String firstValue(List<DcatProperty> properties) {
 	    if (properties == null || properties.isEmpty() || properties.get(0) == null
 	        || properties.get(0).getValue() == null) {
 	      return "";
@@ -1155,16 +388,16 @@ public class CatalogueService  {
 	  
 		private int restRequest(String api, String data, String requestType) throws Exception {
 		    Map<String, String> headers = new HashMap<String, String>();
-		    headers.put("Content-Type", "application/json");
+		    headers.put("Content-Type", "application/ld+json");
 		    RestClient client = new RestClientImpl();
 		    HttpResponse response = null;
 		    if (requestType.equals("POST")) {
 		      response = client.sendPostRequest(api, data,
-		          MediaType.APPLICATION_JSON_TYPE, headers); 
+		          MediaType.valueOf("application/ld+json"), headers);
 		    }
 		    else if (requestType.equals("PUT")) {
 		      response = client.sendPutRequest(api, data,
-		          MediaType.APPLICATION_JSON_TYPE, headers); 
+		          MediaType.valueOf("application/ld+json"), headers);
 		    }
 		    else if (requestType.equals("GET")) {
 		      response = client.sendGetRequest(api, headers);
@@ -1173,7 +406,15 @@ public class CatalogueService  {
 			      response = client.sendDeleteRequest(api, headers); 
 			}
 		    int status = client.getStatus(response);
-		    if (status != 200 && status != 201 && status != 204) {
+		    if (status == 207) {
+                String body = client.getHttpResponseBody(response);
+                // Orion can report 207 for a fully successful mixed create/update batch.
+                // Accept it only when every requested ID is explicitly acknowledged.
+                if (completeBatchSuccess(body, data)
+                    || (api.endsWith("/entityOperations/delete") && completeDeleteSuccess(body, data))) status = 204;
+                else logger.warn("CB incomplete batch response: {}", body);
+            }
+		    if (status != 200 && status != 201 && status != 204 && status != 207) {
 		        try { logger.warn("CB RESPONSE BODY (" + status + "): " + client.getHttpResponseBody(response)); } catch (Exception ex) { logger.warn("Could not read CB response body: " + ex.getMessage()); }
 		    }
 		    // Release the pooled connection (consume any unread entity).
@@ -1182,6 +423,58 @@ public class CatalogueService  {
 		    }
 		    return status;
 	}
+
+    /** Deleting an already absent entity is successful only if every ID is accounted for. */
+    static boolean completeDeleteSuccess(String responseBody, String requestBody) {
+        try {
+            JSONArray requested = new JSONArray(requestBody);
+            Set<String> expected = new HashSet<>(), acknowledged = new HashSet<>();
+            for (int i = 0; i < requested.length(); i++) {
+                Object id = requested.get(i);
+                if (!(id instanceof String) || ((String)id).isEmpty() || !expected.add((String)id)) return false;
+            }
+            JSONObject body = new JSONObject(responseBody);
+            JSONArray success = body.getJSONArray("success"), errors = body.getJSONArray("errors");
+            for (int i = 0; i < success.length(); i++) {
+                Object id = success.get(i);
+                if (!(id instanceof String) || !acknowledged.add((String)id)) return false;
+            }
+            for (int i = 0; i < errors.length(); i++) {
+                JSONObject item = errors.getJSONObject(i), error = item.getJSONObject("error");
+                if (error.getInt("status") != 404
+                    || !"https://uri.etsi.org/ngsi-ld/errors/ResourceNotFound".equals(error.getString("type"))
+                    || !acknowledged.add(item.getString("entityId"))) return false;
+            }
+            return !expected.isEmpty() && expected.equals(acknowledged);
+        } catch (RuntimeException invalidResponse) {
+            return false;
+        }
+    }
+
+    static boolean completeBatchSuccess(String responseBody, String requestBody) {
+        try {
+            JSONObject body = new JSONObject(responseBody);
+            JSONArray errors = body.optJSONArray("errors"), success = body.optJSONArray("success");
+            if (errors == null || errors.length() != 0 || success == null) return false;
+            JSONArray requested = new JSONArray(requestBody);
+            Set<String> expected = new HashSet<>(), acknowledged = new HashSet<>();
+            for (int i = 0; i < requested.length(); i++) {
+                Object item = requested.get(i);
+                String id = item instanceof JSONObject ? ((JSONObject)item).optString("id", "")
+                        : item instanceof String ? (String)item : "";
+                if (id.isEmpty()) return false;
+                expected.add(id);
+            }
+            for (int i = 0; i < success.length(); i++) {
+                Object item = success.get(i);
+                if (!(item instanceof String)) return false;
+                acknowledged.add((String)item);
+            }
+            return !expected.isEmpty() && expected.equals(acknowledged);
+        } catch (RuntimeException invalidResponse) {
+            return false;
+        }
+    }
 	
 	
 }

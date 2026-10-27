@@ -92,6 +92,10 @@ public class DcatDistribution implements Serializable {
 
   /** The id. */
   private String id;
+  private String resourceUri;
+  @Column(name = "resourceUri", length = 2048)
+  public String getResourceUri() { return resourceUri; }
+  public void setResourceUri(String value) { resourceUri = value; }
 
   /** The stored rdf. */
   @SerializedName(value = "storedRDF")
@@ -370,7 +374,7 @@ public class DcatDistribution implements Serializable {
     setAvailability(new DcatProperty(DCATAP.availability, SKOS.Concept, availability));
     setCompressionFormat(new DcatProperty(DCAT.compressFormat, DCTerms.MediaType, compressionFormat));
     setHasPolicy(
-        new DcatProperty(ResourceFactory.createProperty("https://www.w3.org/ns/odrl/2/"), DCTerms.Policy, hasPolicy));
+        new DcatProperty(ResourceFactory.createProperty("http://www.w3.org/ns/odrl/2/hasPolicy"), DCTerms.Policy, hasPolicy));
     setPackagingFormat(new DcatProperty(DCAT.packageFormat, DCTerms.MediaType, packagingFormat));
     setSpatialResolution(new DcatProperty(DCAT.spatialResolutionInMeters, XSD.decimal, spatialResolution));
     setTemporalResolution(new DcatProperty(DCAT.temporalResolution, XSD.duration, temporalResolution));
@@ -655,7 +659,7 @@ public class DcatDistribution implements Serializable {
    */
   public void setLicense(DctLicenseDocument license) {
     this.license = (license != null) ? license
-        : new DctLicenseDocument(DCTerms.license.getURI(), "", "", "", nodeId);
+        : new DctLicenseDocument("", "", "", "", nodeId);
   }
 
   // public void setLicense(String license) {
@@ -757,7 +761,7 @@ public class DcatDistribution implements Serializable {
    */
   @Embedded
   @AttributeOverrides({
-      @AttributeOverride(name = "value", column = @Column(name = "releaseDate", columnDefinition = "varchar(255) default '1970-01-01T00:00:00Z'")) })
+      @AttributeOverride(name = "value", column = @Column(name = "releaseDate")) })
   public DcatProperty getReleaseDate() {
     return releaseDate;
   }
@@ -768,7 +772,7 @@ public class DcatDistribution implements Serializable {
    * @param releaseDate the new release date
    */
   public void setReleaseDate(DcatProperty releaseDate) {
-    this.releaseDate = releaseDate;
+    this.releaseDate = DcatProperty.withoutInventedDate(releaseDate);
   }
 
   /**
@@ -788,7 +792,7 @@ public class DcatDistribution implements Serializable {
    */
   @Embedded
   @AttributeOverrides({
-      @AttributeOverride(name = "value", column = @Column(name = "updateDate", columnDefinition = "varchar(255) default '1970-01-01T00:00:00Z'")) })
+      @AttributeOverride(name = "value", column = @Column(name = "updateDate")) })
   public DcatProperty getUpdateDate() {
     return updateDate;
   }
@@ -799,7 +803,7 @@ public class DcatDistribution implements Serializable {
    * @param updateDate the new update date
    */
   public void setUpdateDate(DcatProperty updateDate) {
-    this.updateDate = updateDate;
+    this.updateDate = DcatProperty.withoutInventedDate(updateDate);
   }
 
   /**
